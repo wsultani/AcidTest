@@ -1,0 +1,599 @@
+#!/usr/bin/expect --
+
+proc init_config {} {
+
+    set qos on
+    write_step "Setting QOS to default ($qos)"
+    set ret [QOS_config $qos]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    write_step "Setting bypass to off"
+    set ret [$::dut bivio_set_bypass off]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return $ret
+    }
+
+    write_step "Disabling softbypass"
+    set ret [softbypass_config off]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return $ret
+    }
+
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "5.0.3.12"]
+    if { [problem_with $ret] } {
+        # expected results pre build 5.0.3.12
+        # disable jumbo on dut
+        write_step "Disabling Jumbo"
+        set state disable
+    } else {
+        # expected results post build 5.0.3.12
+        # enable jumbo on dut
+        write_step "Enabling Jumbo"
+        set state enable
+    }
+
+    set ret [$::dut bivio_config_jumbo $state]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc default_config {} {
+
+    set sid $::sid($::dut)
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [$::dut bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # set the initial system config.
+    set ret [init_config]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # get the list of running apps.
+    set ret [$::dut bivio_nrsp_running all]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # stop any running apps.
+    set applst [data_from $ret]
+    foreach app $applst {
+        write_info "Stopping $app"
+        set ret [$::dut bivio_nrsp_stop $app]
+        if { [problem_with $ret data] } {
+             write_error [data_from $ret]
+             return [list false [data_from $ret]]
+        }
+
+        write_info "Closing $app profile"
+        set ret [$::dut bivio_nrsp_close $app]
+        if { [problem_with $ret data] } {
+             write_error [data_from $ret]
+             return [list false [data_from $ret]]
+        }
+    }
+    
+    # if system is scaled, use the following sequence.
+    if { $::sys_info(system) == "NPC/APC Scaled" || $::sys_info(system) == "APC Scaled" } {
+        write_step "Loading default config for $::dut \($::sys_info(system)\)"
+        
+        set clicmd {bivio-ifconfig -a s inet 0.0.0.0 ; bivio-ifconfig map s0.e0 s3.e0}
+        set exp "Current proposal has been accepted"
+        write_info "sending cli \"$clicmd\" to $::dut"
+        set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        set num_cpu [expr ($::sys_info(CPUNet)/2) + 1]
+
+        set clicmd "bvspcfgset \"/bivio/net/ports/num_cpu\" \"$num_cpu\""
+        set exp "Setting key \"/bivio/net/ports/num_cpu\" to \"$num_cpu\""
+        write_info "sending cli \"$clicmd\" to $::dut"
+        set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        write_step "Rebooting System $::dut ...."
+        set ret [$::dut bivio_reboot normal]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        write_info "Checking scaled system throttle bit"
+        set cmd {bvcmd -bp board-master cat /proc/xpcfpga  | grep -i "throttle bit"}
+        set exp "CPU-X:.*$::prompt($::dut)"
+        set ret [send_expect_pair $sid $cmd $exp "" 2 10]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { [regexp {Throttle Bit\s+1} [data_from $ret] match] } {
+            write_error "Found throttle bit set to 1 - [data_from $ret]"
+            return [list false [data_from $ret]]
+        }
+
+        return [list true [data_from $ret]]
+    }
+
+    # send cli commands to dut object
+    set clicmd "bivio-ifconfig -a s inet 0.0.0.0 up"
+    set exp "Interface configuration applied and saved.*$::prompt($::dut)"
+    write_info "sending cli \"$clicmd\" to $::dut"
+    set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # send cli commands to dut object
+    set clicmd "bivio-ifconfig map --defaults"
+
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "5.0.3.12"]
+    if { [problem_with $ret] } {
+        # expected results pre build 5.0.3.12
+        set exp "Proposal Skipped per config: Auto Acception"
+    } else {
+        # expected results post build 5.0.3.12
+        set exp "Current proposal has been accepted"
+    }
+
+    write_info "sending cli \"$clicmd\" to $::dut"
+    set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc zbridgeapp_config { {rpmlst ""} } {
+
+    # start app
+    set applst "zbridgeapp"
+    write_info "Starting $applst"
+    set ret [$::dut bivio_nrsp_start $applst]
+    if { [problem_with $ret data] } {
+         write_error [data_from $ret]
+         return [list false [data_from $ret]]
+    }
+
+    write_info "Checking cpu states"
+    for {set i 0} {$i < 5} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            sleep 30
+            continue
+        } else {
+            break
+        }
+    }
+
+   # Check to see if app is running on all cpu
+    write_info "Checking $applst"
+    set ret [$::dut bivio_nrsp_running $applst]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc bypass_config { {stat ""} } {
+
+    set ret [$::dut bivio_set_bypass forced]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc QOS_config { stat } {
+
+    set ret [$::dut bivio_show_version]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set cbuild [data_from $ret]
+
+    set ret [compare_builds "$cbuild" gt "5.0.4.15"]
+    if { [problem_with $ret] } {
+        #expected results pre build 5.0.4.15
+        set clicmd "npcmd set \"qos $stat\""
+        switch $stat {
+            on {
+                set clicmd "qos enable"
+                set exp "Setting QOS to 1"
+            }
+            off {
+                set clicmd "qos disable"
+                set exp "Setting QOS to 0"
+            }
+        }
+    } else {
+        # expected results post build 5.0.4.15
+        set clicmd "npcmd cpu-xlr set \"qos $stat\""
+        switch $stat {
+            on {
+                set clicmd "qos enable"
+                set exp "QOS is enabled"
+            }
+            off {
+                set clicmd "qos disable"
+                set exp "QOS is disabled"
+            }
+        }
+    }
+
+    # send cli commands to dut object
+    write_info "sending cli \"$clicmd\" to $::dut"
+    set ret [$::dut bivio_fpga_send_expect $clicmd $exp]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc softbypass_config { stat } {
+
+    set sid $::sid($::dut)
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [$::dut bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # send cli commands to dut object
+
+    switch $stat {
+        on {
+            set stat "enable"
+        }
+        off {
+            set stat "disable"
+        }
+    }
+
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "5.0.4.15"]
+    if { [problem_with $ret] } {
+        # expected results pre build 5.0.4.15
+        set clicmd "npcmd ${stat}_failopen"
+    } else {
+        # expected results post build 5.0.4.15
+        set clicmd "npcmd cpu-xlr set \"failopen $stat\""
+    }
+
+    set exp "Server: success"
+    write_info "sending cli \"$clicmd\" to $::dut"
+    set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc snort_config { {rpmlst "snort.ppc.rpm snortrules.ppc.rpm"} } {
+
+    set app snort
+    return [app_rpm_install $app $rpmlst]
+}
+
+proc bro_config { {rpmlst ""} } {
+
+    set app bro
+    return [app_rpm_install $app $rpmlst]
+}
+
+proc yaf_config { {rpmlst ""} } {
+
+    set app yaf
+    return [app_rpm_install $app $rpmlst]
+}
+
+proc sancp_config { {rpmlst ""} } {
+
+    set app sancp
+    return [app_rpm_install $app $rpmlst]
+}
+
+proc nprobe_config { {rpmlst ""} } {
+
+    set app nProbe
+    return [app_rpm_install $app $rpmlst]
+}
+
+proc arpwatch_config { {rpmlst ""} } {
+
+    set app arpwatch
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc barnyard_config { {rpmlst ""} } {
+
+    set app barnyard
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc barnyard2_config { {rpmlst ""} } {
+
+    set app barnyard2
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc argus_config { {rpmlst ""} } {
+
+    set app argus
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc tcpdump_config { {rpmlst ""} } {
+
+    set app tcpdump
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc silk_config { {rpmlst ""} } {
+
+    set app silk
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc squid_config { {rpmlst ""} } {
+
+    set app squid
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc ztcpdump_config { {rpmlst ""} } {
+
+    set app ztcpdump
+    return [app_rpm_install $app $rpmlst]
+
+}
+
+proc app_rpm_install { app rpmlst } {
+
+    set server 192.168.2.30
+    set path {automation/btc/system/rpm}
+
+    set build [data_from [$::dut bivio_show_version]]
+
+    set base_build "5.0"
+    set ret [compare_builds $build gt $base_build]
+    if { [problem_with $ret] } {
+        write_info "$build is less then $base_build"
+        set path "[file join "$path" "5.0"]"
+    } else {
+        write_info "$build is greater then $base_build"
+        set path "[file join "$path" "5.1"]"
+    }
+
+    set path [ file join $path $app ]
+
+    # Load default config
+    set ret [default_config]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return $ret
+    }
+
+    foreach rpm $rpmlst {
+        write_step "Getting $rpm"
+        set ret [$::dut bivio_wget $server [file join $path $rpm] "/root/$rpm"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { [file extension $rpm] == ".xml" && $app == "arpwatch" } {
+            set dst "/etc/bivio/bvcig/conf.d/"
+            write_step "copying file $rpm to $dst"
+            set ret [$::dut bivio_file_operation copy "$rpm" "$dst"]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+
+            write_step "reloading bvcig"
+            set ret [$::dut bivio_cig_reload]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+
+        if { $rpm == "yafctl" && $app == "yaf" } {
+            write_step "copying file $rpm to /etc/init.d/"
+            set ret [$::dut bivio_file_operation copy "$rpm" "/etc/init.d/"]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+
+        if { $rpm == "apcnat" && $app == "squid" } {
+
+            write_step "Changing permission on file $rpm"
+            set cmd "chmod 777 $rpm"
+            set exp ""
+            set ret [send_expect_pair $::sid($::dut) $cmd $exp "" 2 5]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+
+            write_step "Enabling NAT"
+            set cmd "./apcnat enable"
+            set exp "APC Natting enabled"
+            set ret [send_expect_pair $::sid($::dut) $cmd $exp "" 2 5]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+
+	    write_step "Running install on $::dut"
+	    set cmd "/etc/init.d/${app}ctl install"
+	    set exp ""
+	    set ret [send_expect_pair $::sid($::dut) $cmd $exp "" 2 5]
+	    if { [problem_with $ret] } {
+	        write_error [data_from $ret]
+	        return [list false [data_from $ret]]
+	    }
+        }
+
+        if { [file extension $rpm] == ".rpm" } {
+            write_step "Installing $rpm"
+            set ret [$::dut bivio_install_rpm [file join $path $rpm]]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+    }
+
+    # start app
+    set startapplst "[string tolower $app]"
+    set ret [$::dut bivio_nrsp_start $startapplst]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_info "Checking cpu states"
+    for {set i 0} {$i < 5} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            sleep 30
+            continue
+        } else {
+            break
+        }
+    }
+
+   # Check to see if app is running on all cpu
+    write_info "Checking $startapplst"
+    set ret [$::dut bivio_nrsp_running $startapplst]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc set_cig_map { mapping } {
+    set procname [lindex [info level 0] 0]
+    write_debug "Entering $procname"
+
+    set sid $::sid($::dut)
+
+    switch $mapping {
+
+        passive -
+        none -
+        sniff { 
+            set clicmd "bivio-ifconfig map --none" 
+        }
+
+        active -
+        inline -
+        transparent {
+            set clicmd "bivio-ifconfig map --defaults" 
+        }
+    
+        routed { 
+            set clicmd "bivio-ifconfig map --routed-defaults" 
+        }
+ 
+        default {
+            set msg "Unknown interface map type"
+            write_error $msg 
+            return [list false $msg]
+        }
+    } ;# switch
+
+    # get the OS version to determine the expectation
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "5.0.3.12"]
+    if { [problem_with $ret] } {
+        # expected results pre build 5.0.3.12
+        set exp "Proposal Skipped per config: Auto Acception"
+    } else {
+        # expected results post build 5.0.3.12
+        set exp "Current proposal has been accepted"
+    }
+
+    write_info "sending cli \"$clicmd\" to $::dut"
+    set ret [send_expect_pair $sid $clicmd $exp "" 2 10]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+    write_debug "Graceful exit from $procname"    
+    return [list true [data_from $ret]]
+}
+
+proc lreturn { lst } {
+
+    # this code is needed incase you want to pause on fail/pass.
+    # it will pause before initialising the testbed.
+    if { [lindex $lst 0] == "false" } {
+        write_out "RESULT" "FAIL" 4
+    } else {
+        write_out "RESULT" "PASS" 4
+    }
+
+    write_step "Initializing Configuration"
+    set ret [init_config]
+    if { [problem_with $ret] } {
+        return -code return $ret
+    }
+    return -code return $lst
+}
+
+package provide config 1.0

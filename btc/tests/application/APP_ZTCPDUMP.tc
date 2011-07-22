@@ -1,0 +1,47 @@
+#!/usr/bin/expect --
+
+proc APP_ZTCPDUMP {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test ZTCPDUMP 4.0.0-1 opensource app to ensure proper basic usage.}
+set ${p}(Suite)		{application}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{09-06-15}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+
+    set cfg ztcpdump
+    set rpmlst "ztcpdump-4.0.0-2.B7000.ppc.rpm"
+
+    set ret [$::dut bivio_nrsp_reset default all]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Loading $cfg config"
+    set ret [${cfg}_config $rpmlst]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::dut bivio_nrsp_stop $cfg]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+# this is required for auto loading
+package provide APP_ZTCPDUMP 1.0

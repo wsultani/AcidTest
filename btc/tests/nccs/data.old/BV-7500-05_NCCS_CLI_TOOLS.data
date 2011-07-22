@@ -1,0 +1,506 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000229         
+APC1            : 13                  
+APC1ROM         : 2.45s               
+APCCount        : 1                   
+BackPlane0      : 11                  
+Build           : 5.0.7-3 NCCS 1.3.2-0.201102281621 FC5 ZCP System
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45s               
+NPC0Serial      : 7NPC-000568         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45s/2.45s         
+Shell           : Bivio CLI           
+Slot0           : 12-port Harrier 10/100/1000 Card
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(tools)} {
+?
+  app         start/stop applications
+  cig         Configurable Inspection Groups
+  cpus        control the different AP CPU
+  dbquery     Query url categorization database
+  dbupdate    Force manual url categorization DB update
+  export      Export resource to remote host
+  flush       Flush specified target
+  more        Configure "more"
+  ping        Send echo messages
+  system      System commands
+  terminal    Set terminal line parameters
+  traceroute  Trace route to destination
+
+[D
+}
+####################################################################################################
+set {CLI(tools app)} {
+?
+  restart  Restart application specified
+  start    Start application specified
+  stop     Stop specific application
+
+[D
+}
+####################################################################################################
+set {CLI(tools app restart)} {
+?
+  cdbserver     Url category db server
+  log_receiver  Logger application
+  nct           Inspection stack
+
+[D
+}
+####################################################################################################
+set {CLI(tools app restart cdbserver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app restart log_receiver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app restart nct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app start)} {
+?
+  cdbserver     Url category db server
+  log_receiver  Logger application
+  nct           Inspection stack
+
+[D
+}
+####################################################################################################
+set {CLI(tools app start cdbserver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app start log_receiver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app start nct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app stop)} {
+?
+  cdbserver     Url category db server
+  log_receiver  Logger application
+  nct           Inspection stack
+
+[D
+}
+####################################################################################################
+set {CLI(tools app stop cdbserver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app stop log_receiver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools app stop nct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools cig)} {
+?
+  reload  reload CIG table
+
+[D
+}
+####################################################################################################
+set {CLI(tools cig reload)} {
+?
+  force  force cig reload
+  <cr>   
+
+[D
+}
+####################################################################################################
+set {CLI(tools cig reload force)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools cpus)} {
+?
+  halt    halt CPUs
+  reboot  reset CPUs
+
+[D
+}
+####################################################################################################
+set {CLI(tools cpus halt)} {
+?
+  <*-*>  Integer index of the CPU
+
+[D
+}
+####################################################################################################
+set {CLI(tools cpus reboot)} {
+?
+  <*-*>  Integer index of the CPU
+
+[D
+}
+####################################################################################################
+set {CLI(tools dbquery)} {
+?
+  url to be queried  
+
+[D
+}
+####################################################################################################
+set {CLI(tools dbquery url)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools dbupdate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools export)} {
+?
+  mib  Export NCCS mib file to remote host
+
+[D
+}
+####################################################################################################
+set {CLI(tools export mib)} {
+?
+  <protocol://user:password@host:port/path/file>  export to
+
+[D
+}
+####################################################################################################
+set {CLI(tools flush)} {
+?
+  dns_cache               
+  dns_override            
+  provisioning            
+  provisioning_ip         
+  provisioning_template   
+  provisioning_user       
+  url_cache               
+  url_override            
+
+[D
+}
+####################################################################################################
+set {CLI(tools more)} {
+?
+  <integer>  Number of lines (* to disable)
+  auto       Automatic number of lines based on terminal height
+
+[D
+}
+####################################################################################################
+set {CLI(tools more auto)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools ping parameter parameter parameter parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools system)} {
+?
+  bypass  Force hardware bypass on network interfaces
+  halt    Halt the system
+  hwDB    Hardware DB reset
+  reboot  Reboot the system
+  root    Select root partition
+
+[D
+}
+####################################################################################################
+set {CLI(tools system bypass)} {
+?
+  forced  Force by-pass on all interfaces
+  off     Disable by-pass on all intefaces
+  on      Activate by-pass on all intefaces
+
+[D
+}
+####################################################################################################
+set {CLI(tools system bypass forced)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system bypass off)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system bypass on)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system halt)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system hwDB)} {
+?
+  reset  Reset
+
+[D
+}
+####################################################################################################
+set {CLI(tools system hwDB reset)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system reboot)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools system root)} {
+?
+  <partition>  string containing the name of the partition
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal)} {
+?
+  history  Enable and control the command history function
+  no       Negate a command or set its defaults
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal history)} {
+?
+  size  Set history buffer size
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal history size)} {
+?
+  <*-*>  Size of history buffer
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal no)} {
+?
+  history  Enable and control the command history function
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal no history)} {
+?
+  size  Set history buffer size
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools terminal no history size)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(tools traceroute parameter parameter parameter parameter parameter parameter parameter)} {
+?
+  parameter  command's parameter
+  <cr>       
+
+[D
+}

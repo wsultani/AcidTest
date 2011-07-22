@@ -1,0 +1,70 @@
+=========================================
+ArpWatch For The Bivio 7500
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+Arpwatch is a tool that monitors ethernet activity and keeps
+a database of ethernet/ip address pairings. It also reports 
+certain changes via email. Arpwatch uses libpcap, a system-independent
+interface for user-level packet capture
+
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+Bivio had made 2 modifications to the ArpWatch code.
+
+1. The code has been modified to allow arpwatch to run
+in promiscuous mode on stealth interfaces.
+
+2. The code has been modified to not daemonize so that 
+nrsp can track and control the application
+
+
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+1. Install the ArpWatch RPM
+
+    rpm -Uvh  rpwatch-2.1a15-1.B7000.ppc.rpm 
+
+2. Install the application to permanently run
+
+    appinst -i arpwatch 
+
+
+-----------------------------------------
+Configuration
+-----------------------------------------
+
+All configuration takes place in the file /etc/init.d/arpwatchctl.
+
+The default configuration writes arp records to the arp.dat file in each respective
+cpu shared directory.
+
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start ArpWatch running on the application CPU's
+
+        nrsp start arpwatch 
+
+
+-----------------------------------------
+Stopping
+-----------------------------------------
+
+1. Stop ArpWatch running on the application CPU's
+
+        nrsp stop arpwatch 
+

@@ -1,0 +1,510 @@
+#! /usr/bin/expect --
+#
+
+#--------------------
+# set AUTOHOME
+#--------------------
+global env
+if [info exists env(AUTOHOME)] {
+   set AUTOHOME $env(AUTOHOME)
+} else {
+   set AUTOHOME "~jenriq/automation"
+}
+
+#-----------------------------------------------------------------------------#
+#  log
+#
+##----------------------------------------------------------------------------
+##
+## Procedure log - puts the msg to the global Log_Fh and flush it
+##
+##    $msg is written to the global $Log_Fh.  The $Log_Fh is flushed.
+##
+##----------------------------------------------------------------------------
+#
+#  INPUT
+#   1) msg - Message to log
+#
+#  OUTPUT
+#   Writes to Log_Fh
+#   Flushes Log_Fh
+#
+#  EXAMPLE
+#   log "Telnetting to pipe 123"
+#
+#  SYNTAX
+#
+#  AUTHOR
+#   (03/00)  -sviswana Initial Revision
+#-----------------------------------------------------------------------------#
+
+proc log {args} {
+
+     global env
+     global Log_Fh
+
+     # log only if env(LOGP) is set
+     if [info exists env(LOGP)] {
+        set procname [lindex [info level 0] 0]
+
+        set msg [lindex $args 0]
+	if {[llength $args] == 1} {
+		# this is generic log so messages are not prefixed
+		# nor prebuilt like a dbug message
+                set log_prefix "+0+"
+
+                set spaces "  "
+                set level [expr [info level] - 1]
+                for {set i 0} {$i < $level} {incr i 1} {
+                        append spaces "  "
+                } ;# for
+	} elseif {[llength $args] == 2} {
+		#extra params is passed to log. "dbug" maybe?
+		set logtype [lindex $args 1]
+		switch -exact -- $logtype {
+			dbug {
+				# Set the prefix for debug messages
+				set log_prefix "-->"
+
+				# spaces are already prepended
+				set spaces ""
+				# proceed to logging
+			}
+		} ;# switch
+	} else {
+		# wrong # of args received
+
+        } ;# if-else
+
+        #------------------#
+        # Log the message  #
+        #------------------#
+        # If the mesg passed to log has no prefixes prepended to it, we prepend      
+        # it with the prefix assigned for logging. To avoid logging in multiple      
+        # lines in cases wherein the user wants to log in a newline we trim the      
+        # last newline of the message.
+        set temp_msg [string trimright $msg "\n"]
+        set list [split $temp_msg "\n"]
+        
+        # Case in which the user logs a newline
+        if { $list=="" } {
+                append message "$log_prefix" $list
+                puts $Log_Fh "$message"
+        } ;# if
+        
+        set  message ""
+        foreach line $list {
+                append  message $log_prefix $spaces $line
+                puts $Log_Fh "$message"
+                set  message ""
+        } ;# for
+        flush $Log_Fh
+     } ;# if info exists
+
+} ;# proc log
+
+
+#-----------------------------------------------------------------------------#
+#  dbug
+#
+##----------------------------------------------------------------------------
+##
+## Procedure dbug {msg} - This proc puts the msg to the global Log_Fh if
+##                        dbug is set and flushes it
+##
+##    if $dbug is set, $msg is written to the global $Log_Fh.
+##    The $Log_Fh is flushed.
+##
+##----------------------------------------------------------------------------
+#
+#  INPUT
+#   1) msg - Message to log
+#
+#  OUTPUT
+#   Writes to Log_Fh
+#   Flushes Log_Fh
+#
+#  EXAMPLE
+#   global dbug
+#   set dbug 1
+#      .
+#      .
+#      .
+#   dbug "Enter routine <$procname>"
+#
+#  SYNTAX
+#
+#  AUTHOR
+#   2/99 - rmallya
+#-----------------------------------------------------------------------------#
+proc dbug {msg} {
+
+     global env
+     global Log_Fh
+
+     if [info exists env(LOGP)] {
+          set procname [lindex [info level 0] 0]
+           
+          # Log the Dbug message only if env DBUG is set.
+          # Get the prefix for Dbug, prepend it to the Dbug message and log it.
+          if [info exists env(DBUG)] {
+          
+               # To avoid logging in multiple lines in cases wherein the user wants 
+               # to log in a newline we trim the last newline of the message.
+               set temp_msg [string trimright $msg "\n"]
+               set list [split $temp_msg "\n"]
+            
+               # indent the message by building the prepending spaces here
+               set spaces "  "
+               set level [expr [info level] - 1]
+               for {set i 0} {$i < $level} {incr i 1} {
+                    append spaces "  "
+               } ;# for
+            
+               # Case in which the user logs a newline
+               if { $list=="" } {
+                    append message "-->" $spaces $list
+                    puts $Log_Fh "$message"
+               }
+            
+               # Log the message to the log file.
+               set message ""
+               foreach line $list {
+                    append message "$spaces" "$line"
+                    log "$message" dbug
+                    set message ""
+               }
+          } ;# if
+     } ;# if
+ 
+} ;# proc dbug
+
+
+#-----------------------------------------------------------------------------#
+# logpassfail
+##----------------------------------------------------------------------------
+##
+## Procedure logpassfail {msg pass_flag} -log the result of a test step
+##
+##----------------------------------------------------------------------------
+# logpassfail  - Write the given message to the Log_Fh, appended with
+#                padded dots and Pass, Fail, or Abort based on pass_flag.
+#
+# input:      1) msg  - The string to write
+#             2) pass_flag - PASS/FAIL/ABORT
+#
+# output:     Returns $PASS if succesful.
+#
+# example:    logpassfail "$stepid" 0
+#
+# revision history
+#
+# -sjl 96.12.30 initial revision
+#  3/99 -vagishv Changed code to use 'proc log' instead of directly writing to
+#                log file.
+#-----------------------------------------------------------------------------#
+proc logpassfail {args} {
+   set procname [lindex [info level 0] 0]
+   dbug "ENTER <$procname>"
+ 
+   global Test_Proc_Name
+   global Dut_Release
+   global PASS
+   global FAIL
+   global ABORT
+ 
+   # verdict is the last arg
+   set pass_flag [lindex $args end]
+  
+   # Pad the string with blanks before tacking on the pass/fail.
+   # Based on level at which this proc is called and providing 3 spaces for
+   # the prefix that will be added by proc log, fix the total number of 
+   # columns available.
+   set level [info level]
+   
+   # Indentation spaces will be added by proc log based on level at which it is
+   # called
+   set indented_spaces [expr $level * 2]
+   
+   # proc log will also prepend the message with prefix of length 3 characters.
+   set prefix_plus_indented_spaces [expr $indented_spaces + 3]
+   
+   # Normal screen width is 80 and we will go for one less than the max. Hence
+   # the total columns available will be 79 reduced by above calculated columns
+   set total_length_available [expr 79 - $prefix_plus_indented_spaces]
+   
+   if {[llength $args] > 1} {
+      set msg       [lindex $args 0]
+      append msg " " ;# space before filler
+
+      # append filler "......" to msg
+      set numtofill  [expr $total_length_available-[string length $msg]-9]
+      for {set i 0} {$i < $numtofill} {incr i 1} {
+         append msg "."
+      }
+      
+      append msg " " ;# space after filler
+ 
+   } else {
+      # so there was no message passed. Use the new message format.
+  
+      # First, prepend msg with the time stamp.
+      set time [timestamp -format "%H:%M:%S-%m%d"]
+      set msg  [append time " "]
+ 
+      # Append the release name
+      set relstr "<$Dut_Release> "
+      set msg [append msg $relstr]
+ 
+      # Append the test case or test case# 
+      #set case [lindex [split $Test_Proc_Name _] end]
+      set case $Test_Proc_Name 
+      set numstr "<$case>"
+      set msg [append msg $numstr]
+ 
+ 
+      # Pad the string with blanks before tacking on the pass/fail
+      # such that total number of columns should be value of
+      # total_length_available
+      append msg " " ;# space before filler
+      set numtofill  [expr $total_length_available-[string length $msg]-9]
+      for {set i 0} {$i < $numtofill} {incr i 1} {
+         append msg "."
+      };# for
+      append msg " " ;# space after filler
+   };# else
+   if {$pass_flag == $PASS} {
+      append msg "Pass"
+   } elseif {$pass_flag == $FAIL} {
+      append msg "FAIL"
+   } else {
+      append msg "ABORT"
+   }
+ 
+   log "$msg"
+ 
+   dbug "EXIT <$procname>"
+   return $PASS
+ 
+} ;#proc
+
+
+#-----------------------------------------------------------------------------#
+#  throw_error
+#
+##----------------------------------------------------------------------------
+##
+## Procedure throw_error - puts the error msg to the global Error_Fh and 
+##                         flushes it
+##
+##    $msg is written to the global $Error_Fh.  The $Error_Fh is flushed.
+##
+##----------------------------------------------------------------------------
+#
+#  INPUT
+#   1) msg - Message to write to error file
+#
+#  OUTPUT
+#   Writes to Error_Fh
+#   Flushes Error_Fh
+#
+#  EXAMPLE
+#   throw_error "Telnetting to pipe 123"
+#
+#  SYNTAX
+#
+#  AUTHOR
+#   (03/00)  -sviswana Initial Revision
+#-----------------------------------------------------------------------------#
+
+proc throw_error {args} {
+
+   set procname [lindex [info level 0] 0]
+   global Error_Fh
+   global Dut_Release
+
+   set msg [lindex $args 0]
+
+   # Set the prefix for log/dbug messages.
+   set log_prefix "!!!"
+
+   # indent the message by building the prepending spaces here
+   set spaces "  "
+   set level [expr [info level] - 1]
+   for {set i 0} {$i < $level} {incr i 1} {
+  	append spaces "  "
+   } ;# for
+
+   #------------------------#
+   # Log the error message  #
+   #------------------------#
+   set temp_msg [string trimright $msg "\n"]
+   set list [split $temp_msg "\n"]
+
+   # prepend a line with log_prefix... 
+   set message [append "" $log_prefix $spaces]
+
+   # and the time stamp...
+   set time [timestamp -format "%H:%M:%S-%m%d"]
+   set message [append message <$time> " "]
+
+   # and the release name. Write this line to log.
+   set message [append message <$Dut_Release>]
+   puts $Error_Fh $message
+
+   # Next, prepend each error_log line with log_prefix
+   set  message ""
+   foreach line $list {
+      append  message $log_prefix $spaces $line
+      puts $Error_Fh "$message"
+      set  message ""
+   } ;# for
+   flush $Error_Fh
+
+   # Pad the error message with an empty line
+   puts $Error_Fh "$log_prefix"
+
+} ;# proc throw_error
+
+
+#-----------------------------------------------------------------------------#
+# draw_line
+##----------------------------------------------------------------------------
+##
+## Procedure draw_line - put a line of 71 dashes to the global Log_Fh
+##
+##----------------------------------------------------------------------------
+# input:   None.
+#
+# output:  None.
+#
+# example: draw_line
+#
+# revision history
+#
+#-----------------------------------------------------------------------------#
+proc draw_line {} {
+   global Log_Fh
+   global env
+
+   set procname [lindex [info level 0] 0]
+
+   set    separator_string "------------------------------------"
+   append separator_string "-----------------------------------"
+   send_user -- "\n$separator_string\n"
+
+   if [info exists env(LOGP)] {
+      #
+      # if log is enabled by setting the LOGP env variable
+      puts $Log_Fh $separator_string ;# write this line separator to log
+   } ;# if
+} ;# proc draw_line
+
+
+#-----------------------------------------------------------------------------#
+proc open_logs {} { 
+     
+     global env
+     global Log_Fh
+     global Log_File_Name
+     global Error_Fh
+     global Error_File_Name 
+     global scriptname 
+
+     if [info exists env(LOGP)] {
+
+
+	# Sets the log file ready for logging
+	# All subsequent logs will be appended to already existing log msgs
+	set Log_Fh [open $Log_File_Name a]
+	
+	# Sets the error file ready for logging
+	# Any previous error msgs are erased
+	set Error_Fh [open $Error_File_Name w]
+
+	# Write some initial data to the log file
+	draw_line
+
+	dbug "ENTER <$scriptname>" 
+	set msg "\n"
+        send_user $msg
+        log $msg
+	set msg "Begin execution: <$scriptname>.\n"
+        send_user $msg
+        log $msg
+	set msg "Date:    [timestamp -format "%c"]\n"
+        send_user $msg
+        log $msg
+	set msg ""
+        send_user $msg
+        log $msg
+	set msg "Log_File = <$Log_File_Name>\n"
+        send_user $msg
+        log $msg
+	set msg "Error_File = <$Error_File_Name>\n"
+        send_user $msg
+        log $msg
+	set msg ""
+        send_user $msg
+        log $msg
+
+	draw_line
+     } ;# if info exists
+
+} ;# proc
+
+
+#-----------------------------------------------------------------------------#
+proc close_logs {} {
+
+     global env
+     global Log_Fh
+     global Log_File_Name
+     global Error_Fh
+     global Error_File_Name
+     global scriptname 
+
+     if [info exists env(LOGP)] {
+
+
+        # Write some final data to log
+	draw_line
+
+	dbug "EXIT <$scriptname>" 
+	set msg "\n"
+        send_user $msg
+        log $msg
+	set msg "End execution: <$scriptname>.\n"
+        send_user $msg
+        log $msg
+	set msg "Date:    [timestamp -format "%c"]\n"
+        send_user $msg
+        log $msg
+	set msg ""
+        send_user $msg
+        log $msg
+	set msg "Log_File = <$Log_File_Name>\n"
+        send_user $msg
+        log $msg
+	set msg "Error_File = <$Error_File_Name>\n"
+        send_user $msg
+        log $msg
+	set msg ""
+        send_user $msg
+        log $msg
+
+	draw_line
+
+        # Closes the log file, error file
+        close $Log_Fh
+	close $Error_Fh
+     } ;# if info exists
+
+} ;# proc
+
+#
+# source the report procs
+#
+source $AUTOHOME\/shared/report_procs.exp
+
+

@@ -1,0 +1,486 @@
+#!/usr/bin/expect --
+
+package require Itcl
+
+itcl::class rpower {
+
+    # set the global retry for this class
+    public variable gretry 3
+    public variable root_prompt {>}
+    public variable user "admin"
+    public variable passwrd "cosmo"
+    public variable send_human {.1 .3 1 .05 2}
+    public variable rpower_ip ""
+
+    method rpower_connect {}
+    method rpower_disconnect {}
+    method rpower_general_expect { ip user passwrd }
+    method rpower_reset_outlet { outlet waittime }
+    method rpower_switch_outlet { status outlet }
+    method rpower_version { ip }
+
+    constructor {ip_add user password} {
+
+        eval configure -rpower_ip {$ip_add} -user $user -passwrd $password
+
+        # open connection to rpower object
+        set ret [rpower_connect]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            exit
+        }
+
+        # close connection to rpower object.
+        set ret [rpower_disconnect]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            exit
+        }
+        return [list true $this]
+    }
+
+    destructor {
+	if [info exist ::sid($this)] {
+	    close $::sid($this)
+	    write_step "$::sid($this) is closed"
+	}
+    }
+}
+
+itcl::body rpower::rpower_disconnect {} {
+
+    set rpower_ip [$this cget -rpower_ip]
+    foreach rpower $rpower_ip {
+
+        set ret [get_rpower_details $rpower]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        set id [lindex [data_from $ret] 0]
+
+        if [info exist ::sid($id)] {
+            write_step "Closing connection to $id .."
+            if { [ catch "close -i $::sid($id)" reason] } {
+                write_error "Could not close $::sid($id) : $reason"
+                return [list false "$reason"]
+            }
+
+            if { [ catch "wait -i $::sid($id)" reason] } {
+                write_error "wait on $::sid($id) failed : $reason"
+                return [list false "$reason"]
+            }
+
+            if { [lindex $reason 2] < 0 } {
+                write_error "wait on $::sid($id) returned : $reason"
+                return [list false "$reason"]
+            }
+
+            write_info "$this \($::sid($id)\) is closed"
+            unset ::sid($id)
+        }
+    }
+    return [list true ""]
+}
+
+itcl::body rpower::rpower_connect {} {
+
+    set rpower_ip [$this cget -rpower_ip]
+    set user [$this cget -user]
+    set passwrd [$this cget -passwrd]
+
+    # close any open session before opening a new session.
+    set ret [rpower_disconnect]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+	return [list false [data_from $ret]]
+    }
+
+    set rlist ""
+
+    foreach rpower $rpower_ip {
+
+        set ret [get_rpower_details $rpower]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        # create a list of rpowers with a unique entry for each rpower.
+        set rlist [luniqueappend $rlist [lindex [data_from $ret] 0]]
+    }
+
+    foreach rip $rlist {
+        if { [regexp {^\d+.\d+.\d+.\d+$} $rip match] } {
+
+            set cmd "$rip"
+            set method "telnet"
+
+            set rtry 5
+            set wtime 10
+
+            # since there can be only one connection to rpower at one time.
+            # if we don't connect on first attempt then try again.
+            for {set x 1} {$x <= $rtry} {incr x} {
+
+                write_step "Connecting to $rip \($method $cmd\) - attempt $x/$rtry"
+                if { [catch "spawn $method $cmd" reason] } {
+                    write_error "Failed to spawn $method $cmd : $reason"
+                    return [list false "$reason"]
+                }
+                set ::sid($rip) $spawn_id
+
+                set ret [rpower_general_expect $rip $user $passwrd]
+                if { [problem_with $ret] } {
+                    write_info "Waiting $wtime sec before retry"
+                    sleep $wtime
+                    continue
+                } else {
+                    return [list true ""]
+                }
+            }
+
+            if { $x >= $rtry } {
+                return [list false [data_from $ret]]
+            }
+
+        } else {
+            write_debug "No connecting required - using rpower $rip script"
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body rpower::rpower_general_expect { ip user passwrd } {
+    # set the local retry for this method
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($ip)
+
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Escape character is(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_continue
+            }
+
+            -re "(.*)ogin(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+                exp_continue
+            }
+
+            -re "(.*)User Name(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+	        exp_continue
+            }
+
+            -re "(.*)assword(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$passwrd"
+                exp_send -h "$passwrd\r"
+	        exp_continue
+            }
+
+            -re (.*)$root_prompt {
+                set ::prompt($this) $root_prompt
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+	        exp_send -h "\r"
+	        incr attempt
+	        incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+    flush_exp_buffer $spawn_id
+    return [list "false" ""]
+}
+
+itcl::body rpower::rpower_reset_outlet { outlet waittime } {
+
+    foreach out $outlet {
+        set status "off"
+        write_debug "Turning outlet $out $status"
+        set ret [rpower_switch_outlet $status $out]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # sleep a while for the power supply to desapate. required for 7000 series.
+    write_info "waiting $waittime sec between rpower reset"
+    sleep $waittime
+
+    foreach out $outlet {
+        set status "on"
+        write_debug "Turning outlet $out $status"
+        set ret [rpower_switch_outlet $status $out]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+    return [list "true" ""]
+}
+
+itcl::body rpower::rpower_version { ip } {
+
+#    # open session.
+#    set ret [rpower_connect]
+#    if { [problem_with $ret] } {
+#        write_error [data_from $ret]
+#        return [list false [data_from $ret]]
+#    }
+
+    set spawn_id $::sid($ip)
+
+    # get to main menue
+    set rp_cmd "\003"
+    set exp {<ESC>- Main Menu}
+    set ret [send_expect_pair $spawn_id $rp_cmd $exp "" 3 3 nocr]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { ![regexp {Network Management Card AOS\s+v(\S+)} [data_from $ret] match ver] } {
+       return [list false [data_from $ret]]
+    }
+
+#    # close open session.
+#    set ret [rpower_disconnect]
+#    if { [problem_with $ret] } {
+#        write_error [data_from $ret]
+#        return [list false [data_from $ret]]
+#    }
+    return [list "true" "$ver"]
+}
+ 
+itcl::body rpower::rpower_switch_outlet { status outlet } {
+
+    # open session.
+    set ret [rpower_connect]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach rpower $outlet {
+
+        set ret [get_rpower_details $rpower]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        set id [lindex [data_from $ret] 0]
+        set port [lindex [data_from $ret] 1]
+
+        # if we are goint to connect to the ip, then we need to know the
+        # version so to use the correct menue structure.
+        if { [regexp {^\d+.\d+.\d+.\d+$} $id match] } {
+            set ret [rpower_version $id]
+            if { [problem_with $ret] } {
+                return [list false [data_from $ret]]
+            }
+
+            set ver [data_from $ret]
+        }
+
+        foreach out $port {
+
+            # if the id is an rpower script id.
+            if { [regexp {^\d+$} $id match] } {
+                set rp_cmd [list exec rpower $id.$out $status]
+                set exp "has been turned [string toupper $status]"
+
+                write_step "Setting $id.$port to $status"
+                if { [catch {eval $rp_cmd} ret] } {
+                    write_error "Problem executing $rp_cmd : $ret"
+                    return [list false [data_from $ret]]
+                } else {
+                    if { ![regexp "$exp" $ret match] } {
+                        write_error "Expected rpower script output mismatch : $exp"
+                        return [list false [data_from $ret]]
+                    }
+                }
+                write_step "$rp_cmd - $ret"
+            } else {
+
+                set spawn_id $::sid($id)
+
+                # get to main menue
+                set rp_cmd "\003"
+                set exp {<ESC>- Main Menu}
+                set ret [send_expect_pair $spawn_id $rp_cmd $exp "" 3 3 nocr]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+
+                # Select device manager
+                set rp_cmd "1"
+                set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+
+                switch -regexp $ver {
+                    "3.*" {
+                        # Select Outlet Management
+                        set rp_cmd "2"
+                        set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                        if { [problem_with $ret] } {
+                            return [list false [data_from $ret]]
+                        }
+    
+                        # Select Outlet Control/Config
+                        set rp_cmd "1"
+                        set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                        if { [problem_with $ret] } {
+                            return [list false [data_from $ret]]
+                        }
+                    }
+
+                    "2.*" {
+                        # Select Outlet Control/Config
+                        set rp_cmd "3"
+                        set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                        if { [problem_with $ret] } {
+                            return [list false [data_from $ret]]
+                        }
+                    }
+
+                    "1.*" {
+                        # Select Outlet Control/Config
+                        set rp_cmd "3"
+                        set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                        if { [problem_with $ret] } {
+                            return [list false [data_from $ret]]
+                        }
+                    }
+                }
+
+                # Select outlet
+                set rp_cmd "$out"
+                set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+    
+                if { [regexp -nocase "State\\s+:\\s+$status" [data_from $ret] match] } {
+                    write_info "Outlet $out is already $status"
+                    continue
+                }
+
+                if { ![regexp {3\.5\.7.*} $ver match] } {
+                    # select control outlet
+                    set rp_cmd "1"
+                    set exp "$root_prompt"
+                    set ret [send_expect_pair $spawn_id $rp_cmd $exp "" 1 3]
+                    if { [problem_with $ret] } {
+                        return [list false [data_from $ret]]
+                    }
+                }
+
+                switch $status {
+                    on {
+                        set rp_cmd "1"
+                    }
+                    off {
+                        set rp_cmd "2"
+                    }
+                }
+    
+                # select action
+                set exp "Enter \'YES\' to continue or <ENTER> to cancel"
+                set ret [send_expect_pair $spawn_id $rp_cmd $exp "" 1 3]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+    
+                # confirm
+                set rp_cmd "YES"
+                set exp "Press <ENTER> to continue..."
+                set ret [send_expect_pair $spawn_id $rp_cmd $exp "" 1 3]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+
+                # confirm
+                set rp_cmd {\r}
+                set ret [send_expect_pair $spawn_id $rp_cmd $root_prompt "" 1 3]
+                if { [problem_with $ret] } {
+                    return [list false [data_from $ret]]
+                }
+    
+                if { [regexp -nocase "State\\s+:\\s+$status" [data_from $ret] match] } {
+                    write_info "Outlet $out is now $status"
+                } else {
+                    write_error "Outlet $out did not turn $status"
+                    return [list false [data_from $ret]]
+                }
+            }
+        }
+    }
+
+    # close open session.
+    set ret [rpower_disconnect]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc get_rpower_details { rpower } {
+
+    switch -regexp $rpower {
+
+        {^\d+.\d+.\d+.\d+:\d+$} {
+            if { [regexp {(\d+.\d+.\d+.\d+):(\d+)} $rpower match id port] } {
+                return [list true "$id $port"]
+            }
+        }
+
+        {^\d+.\d+$} {
+            if { [regexp {(\d+).(\d+)} $rpower match id port] } {
+                return [list true "$id $port"]
+            }
+        }
+
+        default {
+            write_error "Incorrect rpower format : $rpower"
+            return [list false ""]
+        }
+    }
+}
+
+# the following line must be left at the bottom of the script.
+package provide rpower 1.0

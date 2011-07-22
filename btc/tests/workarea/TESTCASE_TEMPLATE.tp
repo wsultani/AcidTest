@@ -1,0 +1,120 @@
+#!/usr/bin/expect --
+
+#*****************************************************************************
+#*
+#* All lines marked with "#*" are instructional comments and must be removed 
+#* from the final testcase
+#*
+#* The proc name must mach the testcase name. The proc name is used to 
+#* identify a testcase.
+#*
+proc TESTCASENAME {} {
+
+#*****************************************************************************
+#*
+#* The following header needs to be completed when writing a new testcase.
+#* This information will be stored in the Database and used by BTC. So Please 
+#* make sure that the information is accurate before cheking the testcase 
+#* into cvs.
+#*
+#----------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+
+#*****************************************************************************
+#*
+#* Leave the following line as is. this will automatically set the testcase name.
+#*
+set ${p}(Name)		$p
+
+#*****************************************************************************
+#*
+#* Leave the following line as is. This tell BTC that this proc is a testcase.
+#*
+set ${p}(type)		{testcase}
+
+#*****************************************************************************
+#*
+#* Put a short description of what the testcase does inside the curly brackets.
+#*
+set ${p}(Description)	{}
+
+#*****************************************************************************
+#*
+#* Enter the suite that this testcase belongs to. Use already existing suites. 
+#* Creat new suites only if necessary.
+#*
+set ${p}(Suite)		{}
+
+#*****************************************************************************
+#*
+#* Put any comments in this section
+#*
+set ${p}(Comments)	{}
+
+#*****************************************************************************
+#*
+#* Put your name/id here
+#*
+set ${p}(Author)	{}
+
+#*****************************************************************************
+#*
+#* Put the list of required deviced here. this should be in a list form and 
+#* the devices must be in the testbeds database
+#*
+set ${p}(Required)	{}
+
+#*****************************************************************************
+#*
+#* Put the date the testcase was created in the format YYYY/MM/DD
+#*
+set ${p}(Created)	{}
+
+#*****************************************************************************
+#*
+#* Put the end of life date here in the format YYYY/MM/DD.
+#*
+set ${p}(EOL)		{}
+
+#*****************************************************************************
+#*
+#* the following proc will register the testcase into the database. To stop 
+#* registering the testcase, hash out the following line. This is not 
+#* recommended and it shoule be left unhashed.
+#*
+update_mysql_db ${p}
+#----------------------------------------------------------------------------#
+
+#*****************************************************************************
+#*
+#* The following line brings in the spawn id of the dut. The spawn id can 
+#* be used to send and recieve commands to and from the dut. Its is also 
+#* required by some lib calls. If the testcase will not be requiring the 
+#* spawn id then hash out the following line.
+#*
+    set sid $::sid($::dut)
+
+#*****************************************************************************
+#*
+#* Testcase body
+#* Place the testcase code bellow.
+#*
+#*
+
+#*****************************************************************************
+#*
+#* Use the follwoing format to return form the testcase. If you wish to fail 
+#* the testcase return false as the first value in the list, otherwise 
+#* return true for a pass. The second value in the list can be used to pass 
+#* error messages or any other info to the calling proc.
+#*
+    return [list true [data_from $ret]]
+}
+
+#*****************************************************************************
+#*
+#* The following two line are required and must be present for BTC to auto 
+#* locate the testcase, also the package name must exactly match the testcase name.
+#*
+# this is required for auto loading
+package provide TESTCASENAME 1.0

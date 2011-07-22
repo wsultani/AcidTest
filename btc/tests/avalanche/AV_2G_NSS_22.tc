@@ -1,0 +1,57 @@
+#!/usr/bin/expect --
+
+proc AV_2G_NSS_22 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{runs the 2Gbit_NSS_2_2_2_Max_Dual_CAW___final avalanche testcase}
+set ${p}(Suite)		{avalanche}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-12}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    global env
+
+    set env(SPIRENT_TCLAPI_LICENSEROOT) "/opt/SpirentCommunications/Avalanche/TclAPI/"
+    set env(SPIRENT_TCLAPI_ROOT) "/opt/SpirentCommunications/Avalanche/TclAPI/"
+    set env(LD_LIBRARY_PATH) "$env(LD_LIBRARY_PATH):/usr/local/lib:/usr/lib:/lib"
+
+    set tcname {2Gbit_NSS_2_2_2_Max_Dual_CAW___final}
+    set testdir {/opt/SpirentCommunications/Avalanche/TclAPI/tests}
+    set tcdir [file join $testdir $tcname]
+    set resdir [file join $tcdir $tcname]
+
+    set tccmd [file join $tcdir test.tcl]
+    set restore [pwd]
+
+    if { [catch "cd $tcdir" err] } {
+        write_error "could not cd to $tcdir - $err"
+        return [list false "$err"]
+    }
+
+    write_step "Running $tccmd...This may take a while..."
+    set stat [catch "exec /usr/local/ActiveTcl/bin/tclsh $tccmd" ret ]
+    if { ![string equal $::errorCode NONE] } {
+        write_error "$tcname exited with errorcode [lindex $::errorCode 0]\n$ret"
+        copy_result $resdir $::logdir
+        return [list fail "[lindex $::errorCode 0]"]
+    }
+    # uncomment the following to pring out the runtime log
+    # write_output "$ret"
+
+    copy_result $resdir $::logdir
+
+    if { [catch "cd $restore" err] } {
+        write_error "could not cd to $restore - $err"
+        return [list false "$err"]
+    }
+
+    return [list true ""]
+}
+
+# this is required for auto loading
+package provide AV_2G_NSS_22 1.0

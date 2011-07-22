@@ -1,0 +1,483 @@
+#!/usr/bin/expect --
+
+proc install_build { dut build {btype tftp} {intype http} {single_file_inst n} {part_ldp n} {install_from_ldp no} {scsi_cfg noraid} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{proc}
+set ${p}(Description)	{Reinstalls the latest bivio build via TFTP}
+set ${p}(Arguments)	{dut build}
+set ${p}(Return)	{status data}
+set ${p}(Suite)		{Reboot}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-12}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sid $::sid($dut)
+    set prompt $::prompt($dut)
+
+    # installation options
+    set ip_add [$dut cget -ip_add]
+    set net_mask 255.255.255.0
+    set bcast_add 192.168.120.255
+    set gw_add 192.168.120.2
+    set inst_server 192.168.120.1
+    set dns_add 192.168.24.30
+    set dns_slst "bivio.net"
+    set sys_name "[regsub "::" $dut ""].$dns_slst"
+    set root_passwrd "root"
+    set admin_passwrd "root"
+    set time_zone 02
+
+    set boottype $btype
+    set tftp_add 192.168.120.1
+
+    if { [regexp {fcdist.(.*)} $build match branch] } {
+        set tftp_file "[file join "/tftpboot" "${branch}-rescue.bin"]"
+    } else {
+        set tftp_file "/tftpboot/5.0-latest.bin"
+    }
+
+    if { [file dirname $build] == "." } {
+        set base_build "5.0"
+        set ret [compare_builds $build gt $base_build]
+        if { [problem_with $ret] } {
+            write_info "$build is less then $base_build"
+            set installdir "[file join "/install" "5" $build]"
+        } else {
+            write_info "$build is greater then $base_build"
+            set installdir "[file join "/install" "fc11" $build]"
+        }
+    } else {
+        set installdir $build
+    }
+
+    set installtype 1
+    set int_add {10.10.10.0}
+    set servertype $intype
+
+    set ftpuname "install"
+    set ftppasswrd "install"
+
+    # partiton options
+    set drive 1
+    set part_option A
+    set block 2
+    set part_size 5000
+
+    set bootp_state ""
+    set raid_state ""
+
+    set x 0
+
+    # if the system is not already in rom mode, then reset to rom.
+    if { $prompt != "Command>" } {
+        write_step "Rebooting System ...."
+        set ret [$dut bivio_reboot rom]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # start the install process.
+    exec_install_cmd {{} {Command>}}
+    exec_install_cmd {1 {Command>}}
+
+    # configure MGT0
+    exec_install_cmd {1 {Command>}}
+
+    # disable BOOTP
+    if { $bootp_state == "Disable" } {
+        exec_install_cmd {1 {Command>}}
+    }
+
+    # reconfigure MGT0
+    exec_install_cmd {2 {IP Address }}
+    exec_install_cmd "$ip_add {Netmask }"
+    exec_install_cmd "$net_mask {Gateway }"
+    exec_install_cmd "$gw_add {Command>}"
+    exec_install_cmd "q {Command>}"
+    exec_install_cmd "s {Command>}"
+    exec_install_cmd "q {Command>}"
+
+    if { $boottype == "tftp" } {
+        exec_install_cmd {{} {Command>}}
+        exec_install_cmd {1 {Command>}}
+        exec_install_cmd {2 {Command>}}
+        exec_install_cmd {1 {Get TFTP information from BOOTP}}
+        exec_install_cmd {n {TFTP Server} nocr}
+        exec_install_cmd "$tftp_add {TFTP Path/Filename}"
+        exec_install_cmd "$tftp_file {Command>}"
+
+        # The following step is not required for ROM v2.09 and above.
+        #exec_install_cmd "q {Command>}"
+
+        exec_install_cmd "q {Command>}"
+        exec_install_cmd "s {Command>}"
+        exec_install_cmd "q {Command>}"
+        exec_install_cmd "2 {Command>}"
+        exec_install_cmd "3 {Use Configured TFTP}"
+        exec_install_cmd "y {Use default linux command line} nocr"
+        exec_install_cmd "y {Please select} nocr"
+    } else {
+        exec_install_cmd {{} {Command>}}
+        exec_install_cmd {4 {Please select}}
+    }
+
+    # if install from ldp is set then do not initialize the drive otherwise you will
+    # loose the LDP partition.
+    if { $install_from_ldp == "no" } {
+
+        # enter the storage menue and check raid state
+        exec_install_cmd {3 {Option>}}
+        exec_install_cmd {q {Please select}}
+
+        # configure the SCSI drives based on the selected option.
+        if { $scsi_cfg == "raid" && $raid_state == "Enable" } {
+            exec_install_cmd {3 {Option>}}
+            exec_install_cmd "4 {Are you sure you want to continue}"
+            exec_install_cmd "y {Would you like to enable write caching}"
+            exec_install_cmd "n {Would you like to skip the first resync}"
+            exec_install_cmd "y {Disable RAID-1.*Option}"
+            exec_install_cmd {q {Please select}}
+        }
+
+        if { $scsi_cfg == "noraid" && $raid_state == "Disable" } {
+            exec_install_cmd {3 {Option>}}
+            exec_install_cmd "4 {Are you sure you want to continue}"
+
+            # the rescue image has changed in build 5.0.4-4.1
+            # some menue options have also changed.
+            set base_build "5.0.4-4.1"
+            set ret [compare_builds $build gt $base_build]
+            if { [problem_with $ret] } {
+                write_info "$build is less then 5.0.4-4.2"
+                exec_install_cmd "y {Please select}"
+                exec_install_cmd "3 {Enable RAID-1.*Option}"
+            } else {
+                write_info "$build is greater then $base_build"
+                exec_install_cmd "y {Enable RAID-1.*Option}"
+            }
+
+            exec_install_cmd {q {Please select}}
+        }
+
+        if { $scsi_cfg == "noraidreboot" && $raid_state == "Disable" } {
+            exec_install_cmd {3 {Option>}}
+            exec_install_cmd "4 {Are you sure you want to continue}"
+
+            # the rescue image has changed in build 5.0.4-4.1
+            # some menue options have also changed.
+            set base_build "5.0.4-4.1"
+            set ret [compare_builds $build gt $base_build]
+            if { [problem_with $ret] } {
+                write_info "$build is less then 5.0.4-4.2"
+                exec_install_cmd "y {Please select}"
+                exec_install_cmd "3 {Enable RAID-1.*Option}"
+            } else {
+                write_info "$build is greater then $base_build"
+                exec_install_cmd "y {Enable RAID-1.*Option}"
+            }
+
+            exec_install_cmd {q {Please select}}
+            exec_install_cmd {4 {Initialization is now complete.*CPU-X login}}
+
+            # Loginto device and set the propmt
+            set spawn_id $sid
+            exp_send "\r"
+            set ret [$dut bivio_general_expect root $root_passwrd]
+            if { [problem_with $ret] } {
+                return [list false [data_from $ret]]
+            }
+
+            return [list true [data_from $ret]]
+        }
+
+        # enter the storage menue and initialise the drive
+        exec_install_cmd {3 {Option>}}
+        exec_install_cmd {2 {Option>}}
+        exec_install_cmd {1 {Everything on this drive will be erased, Initialize Now}}
+        exec_install_cmd {y {Option>}}
+        exec_install_cmd {q {Please select}}
+    }
+
+    # set the sequence of send expect pairs for the installation process.
+    exec_install_cmd "2 Day"
+    exec_install_cmd "[timestamp -format %d] Month"
+    exec_install_cmd "[timestamp -format %m] Year"
+    exec_install_cmd "[timestamp -format %Y] Hour"
+    exec_install_cmd "[timestamp -format %H] Minute"
+    exec_install_cmd "[timestamp -format %M] {Set time/date to}"
+
+    # install from ldp. this assumes that an LDP partion already exists.
+    if { $install_from_ldp == "yes" } {
+        exec_install_cmd "y {Local partitions were found .* for a network based install}"
+        exec_install_cmd "1 {Do you want to specify a system name}"
+        exec_install_cmd "y {System Name}"
+        exec_install_cmd "$sys_name {Are these settings correct}"
+        exec_install_cmd "y {Option}"
+        exec_install_cmd "1 {Partition Number or Option}"
+
+        # see if we can add a partition
+        exec_install_cmd "A {Name of partition}"
+        exec_install_cmd "Test {Size in Mbytes}"
+        exec_install_cmd "5000 {Adding Partition.*Complete.*Partition Number or Option}"
+
+        # see if we can delete a partition
+        exec_install_cmd "D {Partition to delete}"
+        exec_install_cmd "3 {Deleting Partition.*Complete.*Partition Number or Option}"
+
+        # Select the existing BTC-Auto partition to install to.
+        exec_install_cmd "1 {Please select}"
+    } else {
+        exec_install_cmd "y {IP address for mgt0}"
+        exec_install_cmd "$ip_add {Netmask for mgt0}"
+        exec_install_cmd "$net_mask {Broadcast address for mgt0}"
+        exec_install_cmd "$bcast_add {Are these settings correct}"
+        exec_install_cmd "y {Do you want to specify a system name}"
+        exec_install_cmd "y {System Name}"
+        exec_install_cmd "$sys_name {Do you want to specify a default gateway}"
+        exec_install_cmd "y {Gateway address via mgt0}"
+        exec_install_cmd "$gw_add {IP address of installation server}"
+        exec_install_cmd "$inst_server {Install from a single file}"
+
+        # single file install option
+        switch -regexp $single_file_inst {
+            {y|yes} {
+                set installdir [append installdir ".tar.gz"]
+                exec_install_cmd "y {Installation source file}"
+            }
+
+            {n|no} {
+                exec_install_cmd "n {Installation source directory}"
+            }
+        }
+
+        exec_install_cmd "$installdir {Server type}"
+
+        switch $servertype {
+            nfs {
+                exec_install_cmd "$servertype {Are these settings correct}"
+            }
+            ftp {
+                exec_install_cmd "$servertype {FTP user name}"
+                exec_install_cmd "$ftpuname {FTP password}"
+                exec_install_cmd "$ftppasswrd {Are these settings correct}"
+            }
+            http {
+                exec_install_cmd "$servertype {Do you wish to use HTTP authentication}"
+                exec_install_cmd "n {Are these settings correct}"
+            }
+        }
+
+        # Partition selection and creation.
+        set part_name "BTC-Auto-[timestamp -format {%H%M%S}]"
+        exec_install_cmd "y {Option>}"
+        #exec_install_cmd "$drive {Partition Number or Option>}"
+        exec_install_cmd "$drive {This drive doesn't have any partitions.  Add one now}"
+        exec_install_cmd "y {Name of partition}"
+        exec_install_cmd "$part_name {Size in Mbytes}"
+        exec_install_cmd "$part_size {Complete.*Partition Number or Option}"
+        unset part_name
+    
+        switch $part_option {
+            A {
+            }
+            D {
+            }
+            R {
+            }
+        }
+
+        exec_install_cmd "1 {create a local installation image of the install}"
+
+        switch -regexp $part_ldp {
+            {n|no} {
+                exec_install_cmd "N {Please select}"
+            }
+
+            {y|yes} {
+                set part_name "BTC-LDP-[timestamp -format {%H%M%S}]"
+                exec_install_cmd "Y {Option>}"
+                exec_install_cmd "$drive {Partition Number or Option>}"
+                exec_install_cmd "$part_option {Name of partition}"
+                exec_install_cmd "$part_name {Size in Mbytes}"
+                exec_install_cmd "$part_size {Complete.*Partition Number or Option}"
+                exec_install_cmd "2 {Please select}"
+                unset part_name
+            }
+        }
+    }
+
+    # LDP end  here
+
+    # this will take some time to install.
+    exec_install_cmd "$installtype {Internal address}"
+
+    exec_install_cmd "$int_add {Is this correct}"
+    exec_install_cmd "y {IP address for management port}"
+    exec_install_cmd "$ip_add {Network mask for management port}"
+    exec_install_cmd "$net_mask {Broadcast address for management port}"
+    exec_install_cmd "$bcast_add {Is this correct}"
+    exec_install_cmd "y {Do you want to specify a default gateway now}"
+    exec_install_cmd "y {Default Gateway on management port}"
+    exec_install_cmd "$gw_add {Is this correct}"
+    exec_install_cmd "y {Hostname}"
+    exec_install_cmd "$sys_name {Is this correct}"
+    exec_install_cmd "y {Do you want to specify a name server now}"
+    exec_install_cmd "y {Name Server address}"
+    exec_install_cmd "$dns_add {Name Server search list}"
+    exec_install_cmd "$dns_slst {Is this correct}"
+    exec_install_cmd "y {New.*password}"
+    exec_install_cmd "$root_passwrd {Retype.*password}"
+    exec_install_cmd "$root_passwrd {New.*password}"
+    exec_install_cmd "$admin_passwrd {Retype.*password}"
+    exec_install_cmd "$admin_passwrd {Your selection}"
+    exec_install_cmd "$time_zone {Is this correct}"
+    exec_install_cmd "y {Initialization is now complete.*CPU-X login}"
+
+    # Loginto device and set the propmt
+    set spawn_id $sid
+    exp_send "\r"
+    set ret [$dut bivio_general_expect root $root_passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc exec_install_cmd { s } {
+
+    upvar sid sid
+
+    set bv_cmd [lindex $s 0]
+    set exp [lindex $s 1]
+
+    # reduce the loop for cmds that we suspect might fail.
+    if { $exp == {Adding Partition.*Complete.*Partition Number or Option} } {
+        set loop 5
+    } else {
+        # increase the loop for scaled systems. 
+        if { [info exists ::sys_info(system)] && [regexp {.*Scaled.*} "$::sys_info(system)" match] } {
+            set loop 80
+        } else {
+            # default loop count is 55.
+            #set loop 55
+            set loop 80
+        }
+    }
+
+    set ret [send_expect_pair $sid $bv_cmd $exp "" $loop 20 [lindex $s 2] noresend]
+    if { [problem_with $ret] } {
+        return -code return [list false [data_from $ret]]
+    }
+
+    # determine the RAID state
+    if { [regexp {\d+.\s(Enable|Disable)\s+RAID-1} [data_from $ret] match rstate] } {
+        write_info "RAID-1 is $rstate"
+        upvar raid_state rs
+        set rs $rstate
+    }
+
+    # if bootp is already disabled skip the next step, which is to disable it.
+    if { [regexp {\d+.\s+(Disable|Enable)\s+BOOTP} [data_from $ret] match bstate ] } {
+        write_info "BOOTP is $bstate"
+        upvar bootp_state bs
+        set bs $bstate
+    }
+}
+
+proc install_nccs_build { dut build } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {install the NCCS build}
+set ${p}(Arguments)     {dut build}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {install_build}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {10-20-10}
+set ${p}(EOL)           {}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sid $::sid($dut)
+    set prompt $::prompt($dut)
+
+    set instsrv "192.168.120.1"
+    set nsrcdir "/install/NCCS/"
+    set ndstdir "/usr/src/redhat/RPMS/ppc/"
+
+    write_step "Getting NCCS packages"
+    foreach pkg "$build" {
+        set ret [$dut bivio_wget "$instsrv" "[file join $nsrcdir $pkg]" "[file join $ndstdir $pkg]"]
+        if { [problem_with $ret] } {
+            write_error "Failed to get $pkg - [data_from $ret]"
+            return [list false [data_from $ret]]
+        }
+    }
+
+    write_step "Extracting NCCS packages"
+    set bv_cmd "tar -zxvf [file join $ndstdir $build] -C $ndstdir"
+    set ret [send_expect_pair $sid $bv_cmd "$prompt" "$prompt" 5 5 "" noresend]
+    if { [problem_with $ret] } {
+        write_error "Unable to extract $build - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Setting permissions on install script"
+    set bv_cmd "chmod 777 [file join $ndstdir nccs_install]"
+    set ret [send_expect_pair $sid $bv_cmd "$prompt" "$prompt" 3 5]
+    if { [problem_with $ret] } {
+        write_error "Unable to change permission on nccs_install - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Installing NCCS"
+    set bv_cmd "[file join $ndstdir nccs_install]"
+    set exp "Installing.*$prompt"
+    set ret [send_expect_pair $sid $bv_cmd "$exp" "" 10 10 "" noresend]
+    if { [problem_with $ret] } {
+        write_error "Unable to install NCCS - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "/etc/init.d/sshd start"
+    set exp {Starting sshd:.*OK}
+
+    set ret [send_expect_pair $sid $cmd $exp "$prompt" 2 3]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "chkconfig --level 3 sshd on"
+    set exp "$prompt"
+
+    set ret [send_expect_pair $sid $cmd $exp "$prompt" 2 3]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Rebooting bivio $dut"
+    set ret [$dut bivio_reboot full]
+    if { [problem_with $ret] } {
+        write_error "Failed to Reboot bivio $dut - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+# this is required for auto loading
+package provide install_build 1.0

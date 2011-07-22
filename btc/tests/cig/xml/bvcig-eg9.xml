@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #9: Load Balance IP with ARP to one CPU">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <CIG:Interface name="s0.e0" type="transparent"/>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- red net inspection group -->
+   <CIG:InspectionGroup name="red-ig">
+      <CIG:Cpus from="apc">2</CIG:Cpus>
+      <CIG:Require failstate="open">1</CIG:Require>
+
+      <!-- Create our sub group "red_ig.arp" to handle ARP -->
+      <CIG:InspectionGroup name="arp">
+         <CIG:Max>1</CIG:Max>
+         <CIG:Require failstate="open">1</CIG:Require>
+      </CIG:InspectionGroup>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for red net interfaces -->
+   <CIG:TrafficSet name="red">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="red-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="load-balance">red-ig</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- ARP traffic class -->
+      <CIG:TrafficClass name="red-arp">
+         <CIG:Classification>ETH_ARP_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="broadcast">red-ig.arp</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="red-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

@@ -1,0 +1,274 @@
+#!/usr/bin/expect --
+#
+# $Id: report_procs.exp,v 1.1 2008/04/09 00:20:34 wsultani Exp $
+
+
+proc tams_mkdir {subdir} {
+   if ![file exists $subdir] {
+      catch {exec mkdir -m 755 -p $subdir} result
+      if {$result != ""} {
+         if { ![regexp -nocase "File exists" $result]  } {
+            # Some other error than file exists.
+            error "$result"
+         } ;# if regexp
+      } ;# if result
+   } ;# if file 
+} ;# proc
+
+#----------------------------------------------------------------------------#
+#  create_report_header
+#
+##---------------------------------------------------------------------------
+##
+## Procedure create_report_header - Creates headers for the Final_report_file
+## Procedure                      for each Test Suite run.
+##
+##
+##
+##
+##---------------------------------------------------------------------------
+#
+#  INPUT
+#   1) none
+#
+#  ASSUMPTIONS
+#   This proc is called at the start of the DUT wrapper
+#
+#  OUTPUT
+#   The  DUT related info is populated in the Final Report File
+#
+#  SYNTAX
+#   create_report_header
+#
+#  AUTHOR
+#   2/99 - rmallya
+#   5/00 - at43
+#----------------------------------------------------------------------------#
+proc create_report_header {  } {
+
+   global errorInfo
+   global Test_Suite
+#   global Dut
+#   global Card
+   global Dut_Release
+#   global Binary
+   global Test_Start_Time
+   global Log_Dir
+   global Final_Report_File_Name
+   global Log_File_Name
+   global SUCCESS
+
+   # If final report file name is not specified, set it to log file name.
+   if {$Final_Report_File_Name == ""} {
+      set Final_Report_File_Name $Log_File_Name
+   } ;# if
+
+   if [ catch {
+
+      #
+      # Create a directory based on the Dut_Release
+      #
+      append Log_Dir "/" $Dut_Release
+      tams_mkdir $Log_Dir
+      
+      #----------------#
+      # Open the file  #
+      #----------------#
+      # open a filename with global var name Final_Report_File_Name
+      set handle [ open "$Log_Dir\/$Final_Report_File_Name" "a" ]
+
+      set Test_Start_Time "[timestamp -format "%c"]"
+
+      #-----------------#
+      # Log the Details #
+      #-----------------#
+      # The details logged are the DUT, Cards being tested, release, binary
+      # and the test start time.
+      set mesg "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+      puts $handle $mesg
+      set mesg "#"
+      puts $handle $mesg
+#      set mesg "#    DEVICE TESTED  : $Dut"
+#      puts $handle $mesg
+      set mesg "#    RELEASE        : $Dut_Release"
+      puts $handle $mesg
+#      set mesg "#    BINARY         : $Binary"
+#      puts $handle $mesg
+      set mesg "#    START TIME     : $Test_Start_Time"
+      puts $handle $mesg
+      set mesg "#"
+      puts $handle $mesg
+      set mesg "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+      puts $handle $mesg
+
+      # Create the headers for the table for logging the testcase specific
+      # results for a testsuite in the final report file.
+      set mesg "#+"
+      puts $handle $mesg
+      set mesg "#+     TESTCASE     SUITE    STATUS      DESCRIPTION"
+      puts $handle $mesg
+      set mesg "#+ ---------------  -------  ------  --------------------"
+      puts $handle $mesg
+
+      # Close the file
+      close $handle
+   } ] {
+      close $handle
+      log " Failed to initialize final report file"
+      error $errorInfo
+   } ;# if catch
+   return $SUCCESS
+} ;# proc create_report_header
+
+
+#----------------------------------------------------------------------------#
+#  feature_final_report
+#
+##---------------------------------------------------------------------------
+##
+## Procedure feature_final_report - Logs to the final_report_file
+##
+##  The proc logs to the final_report_file in a specific format.
+##  The format is:
+##  Test Suite  Testcase  Status   Description
+##  ---------- ---------- -------- -------------------
+##   P76         setup    PASS     PAP Authentication
+##   P76         P76_1    PASS     PAP Authentication
+##   P76         P76_2    PASS     PAP Authentication
+##   P76         cleanup  PASS     PAP Authentication
+##
+##
+##---------------------------------------------------------------------------
+#
+#  INPUT
+#   1) args - The message to be logged to the final report file.
+#
+#  OUTPUT
+#   The message will be logged as Pass/Fail
+#
+#  SYNTAX
+#   feature_final_report { args }
+#
+#  AUTHOR
+#   2/99 -rmallya
+#   5/00 - at43
+#----------------------------------------------------------------------------#
+proc feature_final_report  { args } {
+
+   #------------#
+   #   Usage    #
+   #------------#
+   proc usage {} {
+      global proc_name 
+
+      send_user "\n"
+      send_user "usage: $proc_name -suite <suite> -case <case> \n"
+      send_user "       \[-status <P|F|RUN|A>] \[-description <desc>]\n"
+      send_user "\n"
+      send_user "example: $proc_name -suite P100 -case 1 -status A\n"
+      send_user "       \-description \{show int all stats\}\n"
+      send_user "\n\n"
+      exit 1
+   } ;# proc usage
+
+   global proc_name ; set proc_name [lindex [info level 0] 0]
+   dbug "ENTER <$proc_name>"
+
+   #-----------#
+   #  Globals  #
+   #-----------#
+   global PASS
+   global FAIL
+   global SUCCESS
+   global errorInfo
+   global ABORT
+   global Final_Report_File_Name
+   global Log_Dir
+   global Dut_Release
+   global handle
+
+
+   if [catch {
+      dbug "$proc_name received ARGS: <$args>"
+      #---------------#
+      # Get Arguments #
+      #---------------#
+      while { [llength $args] > 0 } {
+         set option [lindex $args 0]
+         switch -- $option {
+            "-suite"  { set test_suite           [lindex $args 1] }
+            "-case"   { set test_case            [lindex $args 1] }
+            "-status" { set status               [lindex $args 1] }
+            "-description"    { set description  [lindex $args 1] }
+            default { 
+               set msg "$proc_name: Unknown arg was received\n"
+               send_user $msg
+               log $msg
+               usage
+            }
+         } ;# switch
+         set args [lrange $args 2 end]
+      } ;# while
+
+      if {$status == $PASS} {
+         set status pass 
+      } elseif {$status == $FAIL} {
+         set status FAIL
+      } elseif {$status == $ABORT} {
+         set status ABORT
+      } else {
+         set msg "$proc_name: Unknown test status was received\n"
+         send_user $msg
+         log $msg
+         usage
+      } ;# If. Tried switch but did not work.
+
+      # Open the file with global var name Final_Report_File_Name.
+      # jenriq: we wiil assume that Log_Dir has been updated to 
+      # include the release number. This was done in proc create_report_header.
+      set handle [ open "$Log_Dir\/$Final_Report_File_Name" "a" ]
+
+      #----------------------------#
+      # Format the Logging Details #
+      #----------------------------#
+      # The entries to the final report file are limited to a predetermined
+      # length to maintain the total characters per line to less than 80.
+      set tc [string range [format "%-15s"  $test_case ] 0 14]
+      set ts [string range [format "%-7s" $test_suite ] 0 6]
+      set st [string range [format "%-10s"  $status    ] 0 5]
+      set ds [string range [format "%-35s" $description] 0 40]
+
+      #-----------------#
+      # Log the Details #
+      #-----------------#
+      # If the status of the testcase is RUN then we log it into the final
+      # report file. Otherwise we look for RUN in the file and then substitute
+      # RUN with the final status e.g. PASS/FAIL/ABORT. The proc
+      # final_report_logpass does the seek and replace for RUN.
+      if { $status == "RUN" } {
+         append line "+  $tc  $ts  $st  $ds"
+         puts $handle $line
+      } else {
+         append line "+  $tc  $ts  $st  $ds"
+         #
+         #final_report_logpass $line
+         # jenriq: we will not pass RUN as status for now. 
+         # Hence, no need to call final_report_logpass and we will
+         # do the puts here
+         puts $handle $line
+      } ;# if
+      close $handle
+   } error] {
+      log "Error while writing to final report file"
+      log "Error: $error"
+      close $handle
+      dbug "EXIT <$proc_name>"
+
+      return $ABORT
+   } ;# if-catch
+
+   dbug "EXIT <$proc_name>"
+   return $SUCCESS
+
+} ;# proc feature_final_report
+

@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #8: Multiple Interfaces using same ins groups">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <!-- Interfaces for traffic set 'foo' -->
+      <CIG:Interface name="s0.e0" type="transparent">s0.e1</CIG:Interface>
+      <CIG:Interface name="s0.e1" type="transparent">s0.e0</CIG:Interface>
+
+      <!-- Interfaces for traffic set 'bar' -->
+      <CIG:Interface name="s0.e2" type="transparent">s0.e3</CIG:Interface>
+      <CIG:Interface name="s0.e3" type="transparent">s0.e2</CIG:Interface>
+      <CIG:Interface name="s1.e0" type="transparent"/>
+      <CIG:Interface name="s1.e1" type="transparent"/>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- first foo net inspection group -->
+   <CIG:InspectionGroup name="foobar-ig1">
+      <CIG:Cpus from="apc">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+   <!-- second foo net inspection group -->
+   <CIG:InspectionGroup name="foobar-ig2">
+      <CIG:Cpus from="apc">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for foo net interfaces -->
+   <CIG:TrafficSet name="foo">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+         <CIG:Interface>s0.e1</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="foo-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+         <CIG:Action type="load-balance">foobar-ig1</CIG:Action>
+         <CIG:Action type="load-balance">foobar-ig2</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- Errored packets traffic class -->
+      <CIG:TrafficClass name="foo-errors">
+         <CIG:Classification>ERR_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="foo-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+   <!-- Traffic Set for bar net interfaces -->
+   <CIG:TrafficSet name="bar">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e2</CIG:Interface>
+         <CIG:Interface>s0.e3</CIG:Interface>
+         <CIG:Interface>s1.e0</CIG:Interface>
+         <CIG:Interface>s1.e1</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="bar-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="load-balance">foobar-ig1</CIG:Action>
+         <CIG:Action type="load-balance">foobar-ig2</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- ARP traffic class -->
+      <CIG:TrafficClass name="bar-arp">
+         <CIG:Classification>ETH_ARP_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- IPv6 traffic class -->
+      <CIG:TrafficClass name="bar-IPv6">
+         <CIG:Classification>IPV6_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="bar-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

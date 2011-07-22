@@ -1,0 +1,207 @@
+#!/usr/bin/expect --
+
+proc DEV_TEST_01 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Just a development testcase, use this proc to build and test development testcases}
+set ${p}(Suite)		{Test}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut pc0 pc1}
+set ${p}(Created)	{08-04-21}
+set ${p}(EOL)		{}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+
+    package require nccs
+    package require stc_avalanche
+
+    # set the test results array
+    #set tarr(key) "category"
+    #set tarr(value) ""
+    #set tarr(action_type) "1"
+    #set tarr(avalance_response) "HTTP: 200: OK"
+
+    #set testdir "/export/scooby/smbmnt/20110406-105931/20110406-110524/Feat_All_Cat/config.tcl"
+
+    #set ret [get_cats_from_config $testdir tarr]
+    #if { [problem_with $ret] } {
+    #    write_error [data_from $ret]
+    #    return [list false [data_from $ret]]
+    #}
+
+
+    set ret [nccs_factory_reset $::nccs]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+exit
+
+    set ret [$::nccs nccs_config_db esoft]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::nccs nccs_db_query "www.cnn.com"]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::nccs nccs_config_log "Forward Redirect Drop Reject" 1]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::nccs nccs_config_url_filter yes]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::nccs nccs_config_acl 10 aclActionUrlfilter http]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::nccs nccs_config_global_profile default "" ]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    array set tarr ""
+    set ret [nccs_core tarr]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+puts $ret
+
+
+exit
+
+    set ret [$nccs nccs_change_user enable enable "#"]
+    set ret [$nccs nccs_configure "configure terminal" ""]
+    set ret [$nccs nccs_configure "platformConfiguration" "\\?"]
+
+
+    set dut_sid $::sid($::dut)
+    set pc_sid $::sid($::pc1)
+
+    set cmd "/sbin/ifconfig" 
+    set exp "eth0.*$::prompt($::pc1)"
+
+    set ret [send_expect_pair $pc_sid $cmd $exp "$::prompt($::pc1)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::pc0 pc_add_ip_alias eth1 10.10.1.27-10.10.1.37 255.255.255.0 255.255.255.255]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::pc1 pc_add_ip_alias eth1 10.10.1.27-10.10.1.37 255.255.255.0 255.255.255.255]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "bivio-ifconfig map list"
+    set exp "$::prompt($::dut)"
+
+    set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+
+#    source /var/www/html/automation/btc/tests/workarea/cli.lib
+#
+#    write_step "changing user to admin"
+#    set ret [$::dut bivio_change_user admin root {\[admin:\]>}]
+#    if { [problem_with $ret data] } {
+#        write_error [data_from $ret]
+#        return [list false [data_from $ret]]
+#    }
+#
+#    foreach cmd [array names CLI] {
+#        set cmd $cmd
+#        set exp "all"
+#
+#        set ret [send_expect_pair $sid $cmd $exp "$::prompt($::dut)" 2 5]
+#        if { [problem_with $ret] } {
+#            write_error [data_from $ret]
+#            return [list false [data_from $ret]]
+#        }
+#
+#        set pat [regsub -all {\s+} $CLI($cmd) ""]
+#        set data [regsub -all {\s+} [data_from $ret] ""]
+#
+#        if { [string match "*$pat*" $data] == "0"} {
+#            write_error "cli ($cmd) output is incorrect - [data_from $ret]"
+#            return [list false [data_from $ret]]
+#        }
+#        write_info "cli ($cmd) output is correct"
+#    }
+#    return [list true ""]
+##############################################################################################
+#    upvar dev_list lbv
+#    upvar $lbv bv
+#
+#    puts [array get bv]
+#    set bv(Connection) ssh
+#
+#    # create the bivio object
+#    set ret [eval $bv(Class) lobj $bv(IPAddress) \
+#            $bv(Login) $bv(Password) $bv(Console) \
+#            $bv(Port) $bv(Connection)]
+#    set ldut "::$ret"
+
+##############################################################################################
+#    write_step "Getting version"
+#    set ret [$::dut bivio_show_version]
+#    if { [problem_with $ret data] } {
+#        write_error [data_from $ret]
+#       return [list false [data_from $ret]]
+#    }
+#    write_output [data_from $ret]
+
+##############################################################################################
+#    write_step "Getting sys info"
+#    set ret [$::dut bivio_sys_info]
+#    if { [problem_with $ret data] } {
+#        write_error [data_from $ret]
+#       return [list false [data_from $ret]]
+#    }
+#
+#    foreach a [array names ::sys_info] {
+#        puts "$a = $::sys_info($a)\n"
+#    }
+
+##############################################################################################
+#    set cpu "5 2"
+#    write_step "Resetting cpu $cpu"
+#    set ret [$::dut bivio_nrsp_reset default $cpu]
+#    if { [problem_with $ret data] } {
+#        write_error [data_from $ret]
+#	return [list false [data_from $ret]]
+#    }
+#    write_output [data_from $ret]
+
+}
+# this is required for auto loading
+package provide DEV_TEST_01 1.0

@@ -1,0 +1,21 @@
+set ignore {
+{help ?}
+{show routes}
+{show alarm active}
+{show alarm all}
+{show alarm log realtime}
+{show alarm unacknowledged}
+{show event log realtime}
+{show netstat}
+{show history}
+{show arp}
+{show arp numeric}
+{show uptime}
+{show config active all}
+{show config active}
+{show config active interfaces}
+{show cpustat full}
+{show techsupport}
+{show system log all}
+{show bvcig log realtime}
+}

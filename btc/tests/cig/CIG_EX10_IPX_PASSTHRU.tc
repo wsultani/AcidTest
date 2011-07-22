@@ -1,0 +1,46 @@
+#!/usr/bin/expect --
+
+proc CIG_EX10_IPX_PASSTHRU {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test CIG pass-through action using IPX.}
+set ${p}(Suite)		{cig}
+set ${p}(Comments)	{}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{09-11-20}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require cigprocs
+
+    set cfgarr(cfg) zbridgeapp
+    set cfgarr(rpmlst) ""
+    set cfgarr(mbps) 200
+    set cfgarr(pkt_count) 1000
+    set cfgarr(pcaplst) {"ether_102B_IPX_1burst1000.pcap"}
+
+    # define testcase xml 
+    # the default transparent file has "all-other" traffic class which, 
+    # in theory, includes  IPX and ARP to be passed-thru
+    set cfgarr(testcase_xml) "" 
+    set cfgarr(mode) inline
+
+    # define array for comparison vs. cpu stats
+    # cpu stats ideals are not defined here; "0" as reference is assumed 
+
+    # define array for comparison vs. xlr stats
+    set ingress s0.e0
+    set egress s0.e1
+    set ideal($ingress\_rx) $cfgarr(pkt_count) 
+    set ideal($egress\_tx) $cfgarr(pkt_count) 
+    set ideal(stack_rx) [expr $ideal($ingress\_rx) + $ideal($egress\_tx)]
+
+    cigreturn [cig_shared_code]
+}
+
+# this is required for auto loading
+package provide CIG_EX10_IPX_PASSTHRU 1.0

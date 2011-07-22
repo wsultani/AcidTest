@@ -1,0 +1,55 @@
+#!/usr/bin/expect --
+
+proc CAVIUM_BASIC {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Run the basic cavium tests on all supported cpus in the system.}
+set ${p}(Suite)		{cavium}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut cavium}
+set ${p}(Created)	{10-04-27}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set dut_sid $::sid($::dut)
+
+    #cavium cavium-1.00-1 support.
+    #set testlst {testnpx_3des testnpx_rc4 testnpx_rnd}
+
+    #cavium cavium-3.00-1 support.
+    set testlst {test_3des test_rc4 test_rnd}
+
+    foreach cpu [lsort $::cavium] {
+        foreach test $testlst {
+
+            start_subtest "$test on $cpu"
+
+            write_step "Running $test on $cpu ..."
+
+            set cmd "bvcmd $cpu [file join {/lib/modules/cavium/utils/} $test]"
+            set exp "$cmd.*$::prompt($::dut)"
+
+            set ret [send_expect_pair $dut_sid $cmd $exp $::prompt($::dut) 2 5]
+            if { [problem_with $ret] } {
+                end_subtest [list false [data_from $ret]]
+                continue
+            }
+            
+            if { ![regexp -nocase {success} [data_from $ret] match] } {
+                write_error "Test $test on CPU $cpu failed .. [data_from $ret]"
+                end_subtest [list false [data_from $ret]]
+                continue
+            }
+
+            end_subtest [list true ""]
+        }
+    }
+
+    return [analyze_subtest]
+}
+# this is required for auto loading
+package provide CAVIUM_BASIC 1.0

@@ -1,0 +1,40 @@
+#! /usr/bin/expect --
+#
+
+global Test_Proc_Name	
+global Dut_Release
+
+############
+# Logs stuff
+############
+global Log_Fh
+global Log_File_Name
+global Error_Fh
+global Error_File_Name
+
+################
+# Report stuff
+################
+global errorInfo
+global Final_Report_File_Name
+global Log_Dir
+
+#--------------#
+# Return Codes #
+#--------------#
+global PASS;      set PASS     0
+global FAIL;      set FAIL     1
+global TIMED_OUT; set TIMED_OUT 2
+global SUCCESS;   set SUCCESS  0
+global ABORT;     set ABORT   -1
+
+global YES;       set YES      1
+global NO;        set NO       0
+global FALSE;     set FALSE    0
+global TRUE;      set TRUE     1
+
+#####################
+# Used by proc dbug 
+#####################
+#global Dbug
+#if [info exists env(DBUG)] { set Dbug 1 } else { set Dbug 0 }

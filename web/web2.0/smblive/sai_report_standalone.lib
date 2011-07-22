@@ -1,0 +1,568 @@
+proc parse_sai_results { saifile filename {outputfilename ""} {format thruput} } {
+
+    switch $format {
+
+        thruput {
+            set displaycondition {$result($framesize.Throughput) >= $report($framesize.Throughput) && $result($framesize.LostFrames) == "0"} 
+            set fetchlist {Throughput RxL2Mbps Rxfps DupFrames LostFrames}
+            set showlist [linsert $fetchlist 0 PktSize]
+            set width 17
+            set passcondition {0}
+            set iterationid {SmartFlow Throughput Results.*?(?=SmartFlow Throughput Results)}
+            set atext "============= SmartFlow Throughput Results"
+        }
+
+        latency {
+            set displaycondition {$result($framesize.Load) >= $report($framesize.Load)}
+            set fetchlist {Load MinLat AvgLat MaxLat}
+            set showlist [linsert $fetchlist 0 PktSize]
+            set width 17
+            set passcondition {0}
+            set iterationid {SmartFlow Latency Results.*?(?=SmartFlow Latency Results)}
+            set atext "============= SmartFlow Latency Results"
+        }
+
+        manufacturing -
+
+        default {
+            set displaycondition {$result($framesize.Throughput) >= $report($framesize.Throughput)} 
+            set fetchlist {CurrentLoad Throughput LostFrames}
+            set showlist [linsert [linsert $fetchlist 0 PktSize] end Results]
+            set width 20
+            set passcondition {$report($framesize.LostFrames) > 0}
+            set iterationid {SmartFlow Throughput Results.*?(?=SmartFlow Throughput Results)}
+            set atext "============= SmartFlow Throughput Results"
+        }
+    }
+
+    set fh [open $filename r]
+    set filetext [read $fh]
+    close $fh
+
+    set rawresultstext $filetext
+
+    # In order for the following regular expression to work, we need to add some extra text
+    # to the end of the text so that the last iteration can be matched.
+    append filetext "$atext"
+
+    # The next line breaks the entire result file into a list of iterations.
+    set iterationtextlist [regexp -nocase -inline -all $iterationid $filetext]
+
+    set framesizelist ""
+
+    foreach text $iterationtextlist {
+        # Determine which iteration this is. eg: (Iteration = 5)
+        set iteration [lindex [lindex [regexp -nocase -inline {iteration = [0-9]+} $text] 0] 2]
+
+        # Find the column header row. This row always starts with "Name".
+        set headerline [lindex [regexp -nocase -inline -line {^name.*} $text] 0]
+        set headerline [regsub -all {\(µsec\)} $headerline ""]
+
+        # Construct a list of column headers.
+        set headerlist ""
+        foreach element [split $headerline ,] {
+            # clean up the header elements
+            if { [regexp {(^.*)\(} $element match head] } {
+                set element $head
+            }
+            set element [string trim $element]
+            if { $element != "" } {
+                lappend headerlist [regsub -all {[%" "]} $element ""]
+            }
+        }
+
+        # Find the totals row. This row always starts with "totals".
+        set totalline [lindex [regexp -nocase -inline -line {^totals.*} $text] 0]
+
+        # Construct a list of total values.
+        set totallist ""
+        foreach val [split $totalline ,] {
+            set val [string trim $val]
+            if { $val != "" } {
+                lappend totallist $val
+            }
+        }
+
+        # Determine the framesize for this testrun.
+        # First, determine which column contains the framesize.
+        set index [lsearch $headerlist "PacketLength"]
+        set framesize [lindex $totallist $index]
+
+	# get the number of actual ports configured in the sai file.
+        set spcount [getDefaultInfo $saifile ports]
+        if { $spcount == "" || $spcount == 0 } {
+            puts "cannot get the total number of Smartbit ports"
+            exit
+        }
+
+        # for latency, each iteration is a load data, so we need to analyze each
+        # line in the iteration and determine the load and append to the total list.
+        if { $format == "latency" } {
+            set loadsum 0
+            set index [lsearch $headerlist "Load"]
+            foreach line [split $text \n] {
+                set rowlist ""
+                foreach val [split $line ,] {
+                    set val [string trim $val]
+                    if { $val != "" } {
+                        lappend rowlist $val
+                    }
+                }
+
+                set load [lindex $rowlist $index]
+                if { [string is digit -strict $load] || [string is double -strict $load] } {
+                    set loadsum [expr $loadsum + $load]
+                }
+            }
+
+            set totallist [lreplace $totallist $index $index [expr round($loadsum)/$spcount]]
+
+            # for latency we will have multiple data for the same framesize
+            # so change the framesize identifier to be unique for each iteration. 
+            set framesize "$iteration.$framesize"
+        }
+
+        array set result ""
+        if { [string is double -strict $framesize] } {
+
+            # Add this row to the results array.
+            for { set i 1 } { $i < [llength $totallist] } { incr i } {
+                set label [lindex $headerlist $i]
+                set data  [lindex $totallist $i]
+                set result($framesize.$label) $data
+            }
+
+            if { ![info exists report($framesize.Throughput)] } {
+                array set report [array get result]
+            }
+
+            if { [expr $displaycondition] } {
+                array set report [array get result]
+            }
+
+            set framesizelist [luniqueappend $framesizelist $framesize]
+            array unset result
+        
+        } else {
+            puts "WARNING: Unable to add the results for iteration $iteration.\
+						Unable to determine the PacketLength."
+        }
+    }
+
+    set temp_keys ""
+    set temp_vals ""
+
+    foreach aname [array names info] {
+        lappend temp_keys "\`$aname\`"
+        lappend temp_vals "\'$info($aname)\'"
+        append temp_sql_cmd "\`$aname\` varchar \(45\) NOT NULL, "
+        append scmd "AND $aname = \"$info($aname)\" "
+    }
+
+    # Add the actual port numbers that have traffic trought them.
+    lappend temp_keys "\`Traffic\`"
+    lappend temp_vals "\'$spcount\'"
+    append temp_sql_cmd "\`Traffic\` varchar \(45\) NOT NULL, "
+    append scmd "AND Traffic = \"$spcount\" "
+
+    # Generate the report.
+
+    foreach s $showlist {
+        lappend fmt "%-${width}s"
+    }
+
+    set tfmt {%-20s %-20s}
+
+    foreach ik [array names info] {
+        append reporttext "[format $tfmt $ik $info($ik)]\n"
+    }
+
+    append reporttext "[string repeat "-" [expr ($width + 1) * [llength $fmt]]]\n"
+    append reporttext "[eval format {$fmt} $showlist]\n"
+    append reporttext "[string repeat "-" [expr ($width + 1) * [llength $fmt]]]\n"
+
+    foreach framesize $framesizelist {
+        set res ""
+        lappend res "[expr $report($framesize.PacketLength) + $report($framesize.CRCSize)]"
+
+        lappend temp_keys "\`$res\`"
+        append temp_sql_cmd "\`$res\` Float NULL, "
+
+        foreach f $fetchlist {
+            set val "$report($framesize.$f)"
+            set nft {%s}
+            if { [regexp {\d+\.\d+} $val match] } {
+                 set nft {%.2f}
+            }
+            lappend res [format $nft $val]
+
+            if { $f == "Throughput" } {
+                lappend temp_vals [format $nft $val]
+            } 
+        }
+
+        if { [expr $passcondition] } {
+            lappend res Fail
+        } else {
+            lappend res Pass
+        }
+
+        append reporttext "[eval format {$fmt} $res]\n" 
+
+        if { $format == "latency" && $report($framesize.Load) >= 100 } {
+            append reporttext "[string repeat "-" [expr ($width + 1) * [llength $fmt]]]\n"
+        }
+    }
+
+    append reporttext "[string repeat "-" [expr ($width + 1) * [llength $fmt]]]\n"
+
+    if { $outputfilename != "" } {    
+        set fh [open [file join temp $outputfilename.txt] w+]
+        puts $fh $reporttext
+        close $fh
+    }
+    
+    foreach line [split $reporttext "\n"] {
+        if { [regexp {([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)} \
+                                $line match pkt thru rxm rxf dup lost] } {
+            if { $thru == 0 } {
+                append reporttext "\nERROR - Throughput for PktSize $pkt is $thru"
+                return [list false "$reporttext"]
+            }
+        }
+    }
+
+    return [list true "$reporttext"]
+}
+
+proc getFlowInfo { saifile flownum info } {
+
+    set fh [open $saifile r]
+    set filetext [read $fh]
+    append filetext "flowtest"
+    close $fh
+
+    set flowlst [regexp -nocase -inline -all "flowtest.*?(?=flowtest)" $filetext]
+    if { [llength $flowlst] <=0 } {
+        return ""
+    }
+
+    set index [lsearch -regexp $flowlst "flowtest $flownum"]
+
+    set ret [regexp -inline -nocase -line "${info}(.*)" [lindex $flowlst $index]]
+    set ret [string trim [lindex $ret 1]]
+    return $ret
+}
+
+proc getDefaultInfo { saifile info } {
+
+    set fh [open $saifile r]
+    set filetext [read $fh]
+    append filetext "flowtest"
+    close $fh
+
+    if {$info == "ports"} {
+        set port 0
+        set flowlst [regexp -nocase -inline -all "ports.*?(?=resolve_endpoints)" $filetext]
+        if { [llength $flowlst] <=0 } {
+            return ""
+        }
+
+        foreach line [split $flowlst "\n"] {
+            if [regexp -nocase {eth\s+\d+:\d+:\d+} $line match] {
+                incr port
+            }
+        }
+        return $port
+    }
+
+    set flowlst [regexp -nocase -inline -all "testdefaults.*?(?=ports)" $filetext]
+    if { [llength $flowlst] <=0 } {
+        return ""
+    }
+
+    set ret [regexp -inline -nocase -line "${info}\\s+(\\S+)" $flowlst]
+    set ret [string trim [lindex $ret 1]]
+    return $ret
+}
+
+proc fill_ip { ip mask } {
+
+    if { [llength $ip] != [llength $mask] } {
+        puts "$ip and $mask need to be same length"
+        return [list false ""]
+    }
+
+    if { ![regexp {(.*)[xX](.*)} $mask match pre post] } {
+        puts "can't find target value to fill in $mask"
+        return [list false ""]
+    }
+
+    if { ![regexp "${pre}(.*)$post" $ip match target] } {
+        puts "can't find target value to fill in $ip"
+        return [list false ""]
+    }
+
+    set out [incr target]
+    return [list "true" "$pre$out$post"]
+}
+
+proc luniqueappend { listname args } {
+
+    # Same as the TCL command "lappend", but only adds unique values on the list.
+
+    foreach arg $args {
+        if { [lsearch -exact $listname $arg] == -1 } {
+            lappend listname $arg
+        }
+    }
+    return $listname
+}
+
+proc generate_sai { smb {flows ""} {framesize ""} {testtime 60} {output ""} {portlist ""} {testtype "thruput"} } {
+
+    # portlist example.
+    # {{smbslot smbport} {bvslot bvport speed mode}} 
+
+    set build "5.0.6.1"
+    #set factor 20
+    set xlrstreams 32
+
+    if { ![info exists framesize] || $framesize == "" } {
+        set framesize {64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518}
+    }
+
+    if { ![info exists flows] || $flows == "" } {
+        set flows $::sys_info(CPUNet)
+    }
+
+    set ip 10.1.0.1
+    set ip_fill_mask 10.X.0.1
+
+    set gw 10.1.0.2
+    set gw_fill_mask 10.X.0.2
+
+    set total_flow $flows
+    set endpoint_prefix 1
+
+    set testname "PERF_GROUP"
+    set groupname "PERF_GROUP"
+
+    array set defaults_arr ""
+    set defaults_arr(erroraction) IGNORE
+    set defaults_arr(testinteractive) no
+    set defaults_arr(showloading) no
+    set defaults_arr(sizewcrc) yes
+    set defaults_arr(readbackdelay) 2
+    set defaults_arr(socketlinkport) 16385
+    set defaults_arr(learningcount) 1
+    set defaults_arr(statusmessagefilter) normal
+    set defaults_arr(RatePerFlowUnit) percentage
+    set defaults_arr(ResultDataSpeedUnit) Mbps
+    set defaults_arr(ResultL2Adjustment) 38
+
+    if {$testtype == "thruput"} {
+        set defaults_arr(thruputSMMR) 100.000:1.000:100.000:1.0
+        set defaults_arr(definethruput) 0
+        set defaults_arr(thruputRSB) 0:0:1
+        set defaults_arr(thruputscale) 0.500
+        set defaults_arr(thruputgranularity) group
+    }
+
+    if {$testtype == "latency"} {
+        set defaults_arr(flowcontrol) no
+    }
+
+    set defaults_fmt "  %-25s %-s\n"
+    foreach name [array names defaults_arr] {
+        append defaults_data "[format $defaults_fmt $name $defaults_arr($name)]"
+    }
+
+    set flowtest_arr(testname) "$testname"
+    set flowtest_arr(connect) $smb
+    set flowtest_arr(testtype) "$testtype"
+    set flowtest_arr(testtime) $testtime
+    set flowtest_arr(ReportAFGRTS) "1:1:1:0:0:0"
+    set flowtest_arr(training) NO
+    set flowtest_arr(includegroups) "$groupname"
+    set flowtest_arr(reportfilename) "temp/${testname}.csv"
+    set flowtest_arr(statusmessagefilename) "temp/${testname}.log"
+    set flowtest_arr(framesizes) $framesize
+    set flowtest_arr(DIEnabled) no
+    set flowtest_arr(AllowJumboFrame) yes
+
+    if {$testtype == "latency"} {
+        set flowtest_arr(stepcount) 10
+        set flowtest_arr(tracklatency) "average/maximum"
+        set flowtest_arr(DurationUnit) seconds
+    }
+
+    append flowtest_data "flowtest 1\n"
+    foreach name [lsort [array names flowtest_arr]] {
+        if { $name == "connect" } {
+            foreach sysip $flowtest_arr($name) {
+                append flowtest_data "  $name $sysip\n"
+            }
+            continue
+        }
+        append flowtest_data "  $name $flowtest_arr($name)\n"
+    }
+
+    set dir fwd
+
+    append group_data "group $groupname\t"
+
+    set port_fmt "  %-5s %-7s %-7s %-7s %-7s %-2s %-2s %-2s %-7s %-4s %-4s %-10s %-10s %-10s %-5s %-6s\n"
+    set endpoint_fmt "  %-5s %-7s %-7s %-17s %-12s %-12s %-5s\n"
+    set flow_data_fmt "  %-4s %-4s->%-9s %-15s %-6s %-4s %-4s %-7s %-4s %-1s\n"
+
+    # previous slot
+    set pslot ""
+    set bvport 0 
+    set bvslot 0
+    set dic ""
+
+    foreach plist $portlist {
+        set smbinfo [lindex $plist 0]
+        set bvspeed [lindex $plist 1]
+        set bvmode [lindex $plist 2]
+        incr bvport
+
+        regexp {(\d+:\d+):(\d+)} $smbinfo match smbslot smbport
+
+        if { [regexp {(^\d)G} $bvspeed match nspeed] } {
+            set bvspeed [expr $nspeed * 1000]
+        }
+
+        if { $bvspeed == "10G" } {
+            set dic "yes"
+        }
+
+        # if new slot then reset port count.
+        if { $pslot != $bvslot} {
+            append port_data "# SMB Slot$smbslot --> BV Slot$bvslot :\n"
+            set pcount 0
+        }
+        set pslot $bvslot
+
+        # set the bivio port naming i.e. s0.e1
+        set bv_port_name "s${bvslot}e${bvport}"
+        incr pcount
+
+        # if the smb ports are greater then the bivio ports then do not include 
+        # the additional ports in sai.
+        #if { $pcount > $bvpcount } {
+        #    continue
+        #}
+
+        # Add port data
+        append port_data [format $port_fmt "eth" "$smbslot:$smbport" "10.00" "10.00" $bvspeed F A 1 random L2S "$dic" "$ip" "$gw" "255.0.0.0" "$bvmode" "$bv_port_name"]
+        set ip [lindex [fill_ip $ip $ip_fill_mask] 1]
+        set gw [lindex [fill_ip $gw $gw_fill_mask] 1]
+
+        # Add resolve_endpoints data
+        append epoint_data "# $bv_port_name Flows Start\n"
+        set epoint_ip "10.$endpoint_prefix.1.0"
+        set epoint_ip_mask "10.$endpoint_prefix.1.X"
+        set epoint_mac "0.$bvslot.19.0.$bvport.00"
+        set epoint_gw "10.$endpoint_prefix.0.2/8"
+
+        set endpoint "${endpoint_prefix}000"
+
+        switch $dir {
+            fwd {
+                set dst [expr $endpoint + 1001]
+                set dir rev
+            }
+
+            rev {
+                set dst [expr ($endpoint - 1000) + 1]
+                set dir fwd
+            }
+        }
+
+        append flow_data "# $bv_port_name\n"
+
+        # foreach flow.
+        for {set flow 0} {$flow < $total_flow} {incr flow} {
+
+            set epoint_mac "0.$bvslot.19.0.$bvport.[format %02X $flow]"
+
+            append epoint_data [format $endpoint_fmt "node" "$endpoint" "$bv_port_name" "$epoint_mac" "$epoint_ip" "$epoint_gw" "1024+"]
+            set epoint_ip [lindex [fill_ip $epoint_ip $epoint_ip_mask] 1]
+
+            # Add defineflows data
+            append flow_data [format $flow_data_fmt UDP $endpoint $dst "${bv_port_name}_[format %03s $flow]" 64 00 64 none 0 0]
+
+            incr endpoint
+        }
+
+        append group_data "${bv_port_name}_000:${bv_port_name}_[format %03s [expr $flow - 1]]\\\n\t\t\t "
+
+        incr endpoint_prefix
+    }
+
+    # write out the sai file.
+
+    set out "sai smartflow\n"
+    append out "[string repeat # 100]\ntestdefaults\n[string repeat # 100]\n"
+    append out "$defaults_data\n"
+
+    append out "[string repeat # 100]\nports\n[string repeat # 100]\n"
+    append out "#[format $port_fmt "" "H:S:P" "Strt" "Step" "Spd" "D" "A" "B" "Fill" "Dut" "DIC" "IPadd" "Gateway" "Netmask" "Mode" "Name"]\n"
+    append out "$port_data\n"
+
+    append out "[string repeat # 100]\nresolve_endpoints\n[string repeat # 100]\n"
+    append out "$epoint_data\n"
+
+    append out "[string repeat # 100]\ndefineflows\n[string repeat # 100]\n"
+    append out "$flow_data\n"
+
+    append out "[string repeat # 100]\ndefinegroups\n[string repeat # 100]\n"
+    append out "$group_data\n"
+
+    append out "$flowtest_data\n"
+
+    if { $output != "" } {
+        set outfd [open $output w+]
+        puts $outfd $out
+        close $outfd
+    } else {
+        puts $out
+    }
+
+    return [list true ""]
+}
+
+proc run_sai_test { sai flow } {
+
+    global env
+
+    # set up the environment required by smartbits.
+    set env(LD_LIBRARY_PATH) "/usr/local/smartbits/SmartBitsAPI/bin"
+    set env(PATH) "$env(PATH):/usr/local/smartbits/SmartBitsAPI/bin"
+
+    # reset the error code
+    set ::errorInfo ""
+    set ::errorCode "NONE"
+
+    set verbose 3
+
+    puts "Running $sai $flow"
+    if { $verbose > 1 } {
+        set stat [catch "exec smbapi $sai $flow >@stdout" ret ]
+    } else {
+        set stat [catch "exec smbapi $sai $flow" ret ]
+    }
+
+    if { ![string equal $::errorCode NONE] } {
+        set ecode "[lindex $::errorCode 0]"
+        set einfo "$::errorInfo"
+        puts "$sai $flow exited with errorcode $ecode\n$einfo"
+        return [list false "$ecode"]
+    }
+
+    return [list true "[lindex $::errorCode 0]"]
+}
+
+package provide sai_report_standalone 1.0

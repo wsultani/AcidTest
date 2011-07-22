@@ -1,0 +1,51 @@
+#! /usr/local/bin/expect --
+#
+
+#-----------------------#
+# Control Key Constants #
+#-----------------------#
+
+# Reference 'man ascii'
+global CTRL_C;   set CTRL_C  "\x03"  ;#  03  ETX   End of text
+global CTRL_D;   set CTRL_D  "\x04"  ;#  04  EOT   End of transmit
+global CTRL_I;   set CTRL_I  "\x09"  ;#  09  HT    Horizontal Tab
+global CTRL_K;   set CTRL_K  "\x0B"  ;#  11  VT    Vertical Tab
+global CTRL_L;   set CTRL_L  "\x0C"  ;#  12  FF    Form feed
+global CTRL_M;   set CTRL_M  "\x0D"  ;#  13  CR    Carriage Return
+global CTRL_O;   set CTRL_O  "\x0F"  ;#  15  SI    Shift in/XON
+global CTRL_T;   set CTRL_T  "\x14"  ;#  20  DC4   Control T
+
+global CTRL_RIGHT_BRACKET
+set    CTRL_RIGHT_BRACKET    "\x1D"  ;#  29  GS    Group Seperator
+
+global BACK_TAB;  set BACK_TAB $CTRL_O
+global TAB;       set TAB      $CTRL_I
+global HT;        set HT       $CTRL_I
+
+#----------------------#
+# Normal Key Constants #
+#----------------------#
+# Is there really such a thing as a "normal" key?
+
+# Use the single-byte character codes for menu navigation.
+# If the multibyte codes (arrow keys) get split up via tcp retransmission
+# or flow control glitches, then they will not be recognized as such.
+global UP_ARROW;       set UP_ARROW    "\x10"
+global DOWN_ARROW;     set DOWN_ARROW  "\x0e"
+global RIGHT_ARROW;    set RIGHT_ARROW "\x06"
+global LEFT_ARROW;     set LEFT_ARROW  "\x02"
+
+global ESC;            set ESC         "\x1B"  ;#  27  ESC   ESCape
+global SP;             set SP          "\x20"  ;#  32  SP    Space
+global CR;             set CR          "\x0D"  ;#  13  CR    Carriage Return
+
+global SPACE;          set SPACE       $SP
+
+global LEFT_BRACKET;   set LEFT_BRACKET  "\["
+global EQUAL_SIGN;     set EQUAL_SIGN    "="
+global MINUS;          set MINUS         "-"
+global DASH;           set DASH          $MINUS
+global HYPHEN;         set HYPHEN        $MINUS
+global ZERO;           set ZERO          "0"
+global QUESTION_MARK;  set QUESTION_MARK "?"
+

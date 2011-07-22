@@ -1,0 +1,486 @@
+#!/usr/bin/expect --
+
+package require Itcl
+
+itcl::class sw {
+
+    # set the global retry for this class
+    public variable gretry 3
+    array set ::sid ""
+    array set ::prompt ""
+    public variable enable_prompt {#}
+    public variable user_prompt {>}
+    public variable send_human {.1 .3 1 .05 2}
+
+    method sw_connect { method sw_ip user passwrd console port }
+    method sw_general_expect { user passwrd }
+    method sw_change_user { user passwrd new_prompt }
+    method sw_config { cfg_grp cmd }
+    method sw_config_vlan { vlan int_lst }
+    method sw_toggle_interface { type int state }
+    method sw_config_port_mirror { src dst state }
+
+    public variable ip_add ""
+    public variable user "enable"
+    public variable passwrd "root"
+    public variable console ""
+    public variable port ""
+    public variable ctype ""
+
+    constructor {ip_add user passwrd console port ctype} {
+
+        # store the constructor args
+        eval configure -ip_add $ip_add -user $user -passwrd $passwrd \
+                       -console $console -port $port -ctype $ctype
+
+        # open connection to sw object
+        set loop 2
+        while { $loop >= 0 } {
+            set ret [sw_connect $ctype $ip_add $user $passwrd $console $port]
+            if { [problem_with $ret] } {
+                if { [info exists ::force] && $::force == "1" && $loop != 0 } {
+                    set ret [reset_console $console $port]
+                    if { [problem_with $ret] } {
+                        write_error "Failed to reset console $console $port"
+                        exit
+                    }
+                    sleep 1
+                    incr loop -1
+                    continue
+                } else {
+                    write_error [data_from $ret]
+                    exit
+                }
+            } else {
+                set ret [sw_change_user enable enable "#"]
+                if { [problem_with $ret data] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+                return [list true $this]
+            }
+        }
+    }
+
+    destructor {
+	if [info exist ::sid($this)] {
+	    close $::sid($this)
+	    write_info "$::sid($this) is closed"
+	}
+    }
+}
+
+itcl::body sw::sw_connect { method sw_ip user passwrd console port} {
+
+    # set the local retry for this method
+    set lretry $gretry
+
+    switch $method {
+	"ssh" {
+	    set cmd "$user@$sw_ip"
+	}
+	"telnet" {
+	    set cmd "$sw_ip"
+	}
+	"console" {
+	    set method "telnet"
+	    set cmd "$console $port"
+	}
+	default {
+	    set method "telnet"
+	    set cmd "$console $port"
+	}
+    }
+
+    switch $user {
+        root {
+	    set ::prompt($this) $enable_prompt
+        }
+        admin {
+	    set ::prompt($this) $user_prompt
+        }
+	default {
+	    set ::prompt($this) $enable_prompt
+        }
+    }
+       
+    write_step "Connecting to $this \($method $cmd\)"
+    if { [catch "spawn $method $cmd" reason] } {
+	write_error "Failed to spawn $method $cmd : $reason"
+	exit
+    }
+
+    set ::sid($this) $spawn_id
+
+
+    # This is needed if mode is ssh and you are asked if you
+    # would like to set up the key and continue.
+    if { $method == "ssh" } {
+        sleep 2
+        exp_send -h "yes\r"
+    }
+
+    set ret [sw_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+    return [list true $spawn_id]
+}
+
+itcl::body sw::sw_general_expect { user passwrd } {
+    # set the local retry for this method
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Escape character is(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                exp_send -h "\r"
+	        exp_continue
+            }
+
+            -nocase "(.*)connection refused(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection refused"
+                flush_exp_buffer $spawn_id
+                return [list "false" "$msg"]
+            }
+
+            "(.*)you want to continue connecting(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent {yes}
+                exp_send -h "yes\r"
+	        exp_continue
+            }
+
+            -re "Last(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                sleep 2
+                exp_send -h "\r"
+                exp_continue
+            }
+
+            -re "(.*)ogin:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+	        exp_continue
+            }
+
+            -re "(.*)assword:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$passwrd"
+                exp_send -h "$passwrd\r"
+	        exp_continue
+            }
+
+            -re (.*)$enable_prompt {
+		set ::prompt($this) $enable_prompt
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)$user_prompt {
+		set ::prompt($this) $user_prompt
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re {(.*)\#\?} {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (#?)"
+	        exp_send -i $spawn_id \003
+                flush_exp_buffer $spawn_id
+	        exp_continue
+            }
+
+            -re (.*)$::prompt($this) {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)Command> {
+		set ::prompt($this) $rom_prompt
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Command>)"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+	        exp_send -h "\r"
+	        incr attempt
+	        incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+    flush_exp_buffer $spawn_id
+    return [list "false" ""]
+}
+
+itcl::body sw::sw_change_user { nuser npasswrd new_prompt } {
+
+    set spawn_id $::sid($this)
+
+    exp_send -h "\r"
+    set ret [$this sw_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # if already in right user mode then return true.
+    if { $::prompt($this) == [set ${nuser}_prompt] } {
+        return [list true $new_prompt]
+    }
+
+    # set the global prompt to the new prompt
+    set temp_prompt $new_prompt
+
+    switch $nuser {
+        enable {
+            set bv_cmd "enable"
+        }
+        user {
+            set bv_cmd "exit"
+        }
+    }
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $new_prompt $new_prompt 5 3]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    set ::prompt($this) $new_prompt
+    return [list true $new_prompt]
+}
+
+itcl::body sw::sw_config { cfg_grp cmd } {
+
+    set spawn_id $::sid($this)
+
+    exp_send -h "end\r"
+    set ret [$this sw_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # if in user mode change to enable mode.
+    if { $::prompt($this) == $user_prompt } {
+        set ret [sw_change_user enable enable "#"]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    set sw_cmd "configure"
+    set new_prompt "\\(config\\)$enable_prompt"
+    set exp "$new_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $new_prompt 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    set ::prompt($this) $new_prompt
+
+    set sw_cmd "$cfg_grp"
+    set exp "\\(config-\.\*\\)$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $new_prompt 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { [regexp {config-\w+} [data_from $ret] match] } {
+        set ::prompt($this) "$match"
+    }
+
+    set exp "$::prompt($this)"
+    set ret [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set sw_cmd "end"
+    set exp "$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set ::prompt($this) $enable_prompt
+    return [list true ""]
+}
+
+itcl::body sw::sw_config_vlan { vlan int_lst } {
+
+    set spawn_id $::sid($this)
+
+    set ret [sw_config "vlan database" "vlan $vlan"]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+   foreach int $int_lst {
+        set ret [sw_config "interface ethernet g$int" "switchport access vlan $vlan"]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # make sure the vlan interfaces are up.
+    set ret [sw_toggle_interface vlan $vlan on]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body sw::sw_toggle_interface { type int state } {
+
+    set spawn_id $::sid($this)
+
+    set ret [sw_change_user enable enable "#"]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set sw_cmd "end"
+    set exp "$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    switch $type {
+        "vlan" {
+            set sw_cmd "show vlan name $int"
+            set exp "$sw_cmd.*$enable_prompt"
+            set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+            if { [problem_with $ret] } {
+                return [list false [data_from $ret]]
+            }
+
+            if { ![regexp {\d+\s+\d+\s+(g\([\d\,\-]+\))} [data_from $ret] match int_lst] } {
+                return [list false [data_from $ret]]
+            }
+        }
+
+        default {
+            if { $int != "all" } {
+                set int_lst "g\($int\)"
+            } else {
+                set int_lst "$int"
+            }
+        }
+    }
+
+    switch $state {
+        "on" {
+            set int_stat "no shutdown"
+        }
+
+        "off" -
+
+        default {
+            set int_stat "shutdown"
+        }
+    }
+
+    set ret [sw_config "interface range ethernet $int_lst" "$int_stat"]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set sw_cmd "show interface status"
+    set exp "$sw_cmd.*$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        #return [list false [data_from $ret]]
+    }
+}
+
+itcl::body sw::sw_config_port_mirror { src dst state } {
+
+    set spawn_id $::sid($this)
+
+    set ret [sw_change_user enable enable "#"]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set sw_cmd "end"
+    set exp "$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    switch $state {
+        "on" {
+            set int_stat "port monitor g$dst"
+        }
+
+        "off" -
+
+        default {
+            set int_stat "no port monitor g$dst"
+        }
+    }
+
+    set ret [sw_config "interface ethernet g$src" "$int_stat"]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set sw_cmd "show port monitor"
+    set exp "$sw_cmd.*$enable_prompt"
+    set ret [send_expect_pair $spawn_id $sw_cmd $exp $::prompt($this) 2 4]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        #return [list false [data_from $ret]]
+    }
+}
+
+# the following line must be left at the bottom of the script.
+package provide sw 1.0

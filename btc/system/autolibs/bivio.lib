@@ -1,0 +1,2257 @@
+#!/usr/bin/expect --
+
+package require Itcl
+
+itcl::class bivio {
+
+    # set the global retry for this class
+    public variable gretry 3
+    array set ::sid ""
+    array set ::prompt ""
+    public variable root_prompt {@CPU-X:?}
+    public variable admin_prompt {\[admin:\]>}
+    public variable cfg_prompt {\[admin:\S+\]>}
+    public variable rom_prompt {Command>}
+    public variable xlr_prompt {BIVIO XLR\$}
+    public variable send_human {.1 .3 1 .05 2}
+
+    method bivio_connect { method bivio_ip user passwrd console port }
+    method bivio_general_expect { user passwrd }
+    method bivio_change_user { user passwrd new_prompt }
+    method bivio_show_version {}
+    method bivio_reboot { mode }
+    method bivio_get_nrsp { mode }
+    method bivio_nrsp_start { applst }
+    method bivio_nrsp_stop { applst }
+    method bivio_nrsp_close { applst }
+    method bivio_nrsp_running { applst }
+    method bivio_nrsp_list { mode }
+    method bivio_nrsp_reset { mode cpulst }
+    method bivio_sys_info {}
+    method bivio_set_bypass { state }
+    method bivio_get_oemopt_mode {}
+    method bivio_run_mfgtest {}
+    method bivio_port_map {}
+    method bivio_io_ports { slot }
+    method bivio_configure { mode cmd }
+    method bivio_generate_cli_data { cli file mode}
+    method bivio_config_jumbo { state }
+    method bivio_wget { server src dst }
+    method bivio_rpm_info { rpm }
+    method bivio_install_rpm { rpm }
+    method bivio_check_alarms { state }
+    method bivio_fpga_send_expect { cmd exp }
+    method bivio_reboot_xlr {}
+    method bivio_alert_count { mode app resarray }
+    method bivio_file_operation { action src dst }
+    method bivio_cig_reload { }
+    method bivio_scp_file { src dst passwrd }
+    method bivio_get_routed_mode { host }
+    method bivio_set_routed_mode { host mode }
+    method bivio_set_access { mode stat }
+    method bivio_updaterom { server romfile mode }
+    method bivio_update_fpga { server fpgafile mode }
+
+    public variable ip_add ""
+    public variable user "root"
+    public variable passwrd "root"
+    public variable console ""
+    public variable port ""
+    public variable ctype ""
+    public variable platform ""
+
+    constructor {ip_add user passwrd console port ctype platform} {
+
+        # store the constructor args
+        eval configure -ip_add $ip_add -user $user -passwrd $passwrd \
+                       -console $console -port $port -ctype $ctype -platform $platform
+
+        switch -regexp $platform {
+            {BV7.*} {
+		set root_prompt {@CPU-X:?}
+		set admin_prompt {\[admin:\]>}
+	    }
+
+	    {BV2.*} {
+                set root_prompt {CPU-X:\~}
+                set admin_prompt {\[admin:\]>}
+            }
+
+	    default {
+                set root_prompt {@CPU-X:?}
+                set admin_prompt {\[admin:\]>}
+            }
+	}
+
+        # open connection to bivio object
+        set loop 4
+        while { $loop >= 0 } {
+            set ret [bivio_connect $ctype $ip_add $user $passwrd $console $port]
+            if { [problem_with $ret] } {
+                # if we detect username at the console
+                # then this must be an nccs system,
+                # so try ssh.
+                if { [regexp {[Uu]sername} [data_from $ret] match] } {
+                    write_warning "NCCS prompt detected (Username) ... Trying ssh connection"
+                    set ctype ssh
+                    eval configure -ctype $ctype
+                    continue
+                }
+                if { [info exists ::force] && $::force == "1" && $loop != 0 } {
+                    set ret [reset_console $console $port]
+                    if { [problem_with $ret] } {
+                        write_error "Failed to reset console $console $port"
+                        exit
+                    }
+                    sleep 1
+                    incr loop -1
+                    continue
+                } else {
+                    write_error [data_from $ret]
+                    exit
+                }
+            } else {
+                return [list true $this]
+            }
+        }
+    }
+
+    destructor {
+	if [info exist ::sid($this)] {
+	    close $::sid($this)
+	    write_info "$::sid($this) is closed"
+	}
+    }
+}
+
+itcl::body bivio::bivio_connect { method bivio_ip user passwrd console port} {
+
+    # set the local retry for this method
+    set lretry $gretry
+
+    switch $method {
+	"ssh" {
+	    set cmd "$user@$bivio_ip"
+	}
+	"telnet" {
+	    set cmd "$bivio_ip"
+	}
+	"console" {
+	    set method "telnet"
+	    set cmd "$console $port"
+	}
+	default {
+	    set method "telnet"
+	    set cmd "$bivio_ip"
+	}
+    }
+
+    switch $user {
+        root {
+	    set ::prompt($this) $root_prompt
+        }
+        admin {
+	    set ::prompt($this) $admin_prompt
+        }
+	default {
+	    set ::prompt($this) $root_prompt
+        }
+    }
+       
+    write_step "Connecting to $this \($method $cmd\)"
+    if { [catch "spawn $method $cmd" reason] } {
+	write_error "Failed to spawn $method $cmd : $reason"
+	exit
+    }
+
+    set ::sid($this) $spawn_id
+
+    # This is needed if mode is ssh and you are asked if you
+    # would like to set up the key and continue.
+    if { $method == "ssh" } {
+        sleep 2
+        exp_send -h "yes\r"
+    }
+
+    set ret [bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+    return [list true $spawn_id]
+}
+
+itcl::body bivio::bivio_general_expect { user passwrd } {
+    # set the local retry for this method
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Escape character is(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                flush_exp_buffer $spawn_id
+	        exp_continue
+            }
+
+            -nocase "(.*)connection refused(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection refused"
+                flush_exp_buffer $spawn_id
+                return [list "false" "$msg"]
+            }
+
+            "(.*)you want to continue connecting(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent {yes}
+                exp_send -h "yes\r"
+	        exp_continue
+            }
+
+            -re "Last(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                sleep 2
+                exp_send -h "\r"
+                exp_continue
+            }
+
+            -re "(.*)sername:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                return [list "false" "$msg"]
+            }
+
+            -re "(.*)ogin:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+	        exp_continue
+            }
+
+            -re "(.*)assword:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$passwrd"
+                exp_send -h "$passwrd\r"
+	        exp_continue
+            }
+
+            -re (.*)$cfg_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "up"
+                exp_send -h "up\r"
+                flush_exp_buffer $spawn_id
+                exp_continue
+            }
+
+            -re "(.*)remove regular file(.*)\?" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent {y}
+                exp_send -h "y\r"
+	        exp_continue
+            }
+
+            -re (.*)$root_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)] \n] end]
+                set full_prompt [regsub -all {\[|\]} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                configure -root_prompt $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)$admin_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)] \n] end]
+                set full_prompt [regsub -all {\[|\]} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                configure -admin_prompt $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re {(.*)\#\?} {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (#?)"
+	        exp_send -i $spawn_id \003
+                flush_exp_buffer $spawn_id
+	        exp_continue
+            }
+
+            -re (.*)$::prompt($this) {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)Command> {
+		set ::prompt($this) $rom_prompt
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Command>)"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            # recover from bootloader menue
+            -re (.*)Option> {
+                set ::prompt($this) $rom_prompt
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Partition Number or Option>)"
+                flush_exp_buffer $spawn_id
+                write_info "Sending CTRL+C to return to boot menue"
+                exp_send -h "\003"
+                expect {[4] Reboot System.*Please select>}
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Rebooting System"
+                exp_send -h "4\r"
+                expect {The system is going down NOW}
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                sleep 120
+                exp_continue
+            }
+
+            -re (.*)$xlr_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)] \n] end]
+                set full_prompt [regsub -all {\[|\]|\$} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                configure -xlr_prompt $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+	        exp_send -h "\003"
+	        incr attempt
+	        incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+    flush_exp_buffer $spawn_id
+    return [list "false" ""]
+}
+
+itcl::body bivio::bivio_change_user { nuser npasswrd new_prompt } {
+
+    set spawn_id $::sid($this)
+
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    if { $::prompt($this) == "$xlr_prompt" && $nuser != "xlr" } {
+        set bv_cmd "FpGa0004"
+        set ret [send_expect_pair $spawn_id $bv_cmd $root_prompt $root_prompt 5 3]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        flush_exp_buffer $spawn_id
+        exp_send -h "\r"
+        set ret [$this bivio_general_expect $user $passwrd]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # if already in right user mode then return true.
+    if { $::prompt($this) == [set ${nuser}_prompt] } {
+        return [list true $new_prompt]
+    }
+
+    # set the global prompt to the new prompt
+    set temp_prompt $new_prompt
+    
+    switch $nuser {
+        admin {
+            set bv_cmd "su $nuser"
+        }
+        root {
+            set bv_cmd "exit"
+        }
+        xlr {
+	    set ret [bivio_change_user root root $root_prompt]
+	    if { [problem_with $ret] } {
+		return [list false [data_from $ret]]
+	    }
+            set bv_cmd "FpGa0001"
+        }
+    }
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $new_prompt $new_prompt 5 3]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    # set the correct prompt
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set ::prompt($this) $new_prompt
+    return [list true $new_prompt]
+}
+
+itcl::body bivio::bivio_show_version {} {
+
+    set spawn_id $::sid($this)
+
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { $::prompt($this) == $root_prompt } {
+        set bv_cmd "cat /etc/NRDIST"
+        set bexp {V:\s+Version\s+(.*)\s+\(Build\s+(\d+)\)\s+L:\s+(.*)\n+\S+}
+        set nexp {V:\s+(.*)\s+--\s+(NCCS\s+.*)\s+L:\s+(.*)\n+\S+}
+    }
+
+    if { $::prompt($this) == $admin_prompt } {
+        set bv_cmd "show version"
+        set bexp {Version\s+(\S+)\s+\(Build\s+(\d+)\)\s+\((.*)\)}
+        set nexp {^(.*)\s+--\s+(NCCS\s+.*)\s+\((.*)\)}
+    }
+
+    set exp "$bv_cmd.*$::prompt($this)" 
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 5 3]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    if { [regexp "Build" [data_from $ret] match] } {
+        if { [regexp $bexp [data_from $ret] match version build bplatform] } {
+            set ver_string "[string trim $version] [string trim $build] [string trim $bplatform]"
+        } else {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { [regexp "NCCS" [data_from $ret] match] } {
+        if { [regexp $nexp [data_from $ret] match version build bplatform] } {
+            set ver_string "[string trim $version] [string trim $build] [string trim $bplatform]"
+        } else {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true "$ver_string"]
+}
+
+itcl::body bivio::bivio_reboot { mode } {
+
+    set spawn_id $::sid($this)
+
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r\r"
+    set ret [$this bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    if { $::prompt($this) == $admin_prompt } {
+        set bv_cmd "reboot system"
+        set exp "Are you sure you want to do this"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $admin_prompt 1 3 "" noresend]
+        if { [problem_with $ret] } {
+	    return [list false [data_from $ret]]
+        }
+
+        set bv_cmd "y"
+        set exp $root_prompt
+        send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 1 3 "" noresend
+    }
+
+    if { $::prompt($this) == $root_prompt } {
+        set bv_cmd "reboot"
+        set exp "The system is going down for reboot NOW!"
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 3 3]
+    }
+
+    if { $mode != "" && $mode == "rom" } {
+        write_debug "ROM mode selected - Entering ROM mode"
+        set bv_cmd {}
+        set exp {Seconds Remaining until Auto Boot}
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp "" 10 30 "" noresend]
+        if { [problem_with $ret] } {
+	    return [list false [data_from $ret]]
+        }
+
+        write_debug "Sending escape to enter ROM mode" 
+        flush_exp_buffer $spawn_id
+        write_sent {\003\003}
+        exp_send -i $spawn_id \033
+        exp_send -i $spawn_id \033
+        expect {
+            -re (.*)assword: {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+            }
+        }
+
+	set bv_cmd {}
+        set exp {Command>}
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp "" 2 3 "" noresend]
+        if { [problem_with $ret] } {
+	    return [list false [data_from $ret]]
+        }
+        return [list true ""]
+    }
+
+    if {$ctype == "ssh"} {
+
+        set loop 10
+        set ok 0
+
+        for {set i 1} {$i <= $loop} {incr i} {
+            write_info "Reconnecting to ssh console on $this - $i/$loop"
+            set ret [$this bivio_connect $ctype $ip_add $user $passwrd $console $port]
+            if { [problem_with $ret] } {
+                write_warning "Unable to connect - [data_from $ret]" 
+                sleep 30
+                continue
+            } else {
+                set ok 1
+                break
+            }
+        }
+
+        if { $ok != 1 } {
+            return [list false [data_from $ret]]
+        }
+
+    } else {
+	
+        # wait for system to initialise and reach the login prompt
+        set bv_cmd {}
+        set exp "Initialization is now complete.*ogin:"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 10 30]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # Login and get the prompt
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r\r"
+    sleep 5
+    set ret [$this bivio_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+
+itcl::body bivio::bivio_get_nrsp { mode } {
+}
+
+itcl::body bivio::bivio_nrsp_start { applst } {
+
+    set spawn_id $::sid($this)
+
+    foreach app $applst {
+        set bv_cmd "nrsp start $app"
+        set exp "Application $app .* running"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 5 5]
+        if { [problem_with $ret] } {
+	    return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_nrsp_stop { applst } {
+
+    set spawn_id $::sid($this)
+    
+    foreach app $applst {
+        set bv_cmd "nrsp stop $app"
+        set exp "Application $app .* stopped"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 4]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_nrsp_close { applst } {
+
+    set spawn_id $::sid($this)
+
+    foreach app $applst {
+        set bv_cmd "nrsp appclose $app"
+        set exp "Application Profile Closed"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 4]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_nrsp_running { applst } {
+
+    set spawn_id $::sid($this)
+
+    if { $applst == "all" } {
+        set bv_cmd "nrsp running"
+        set exp "Application.*$::prompt($this)"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 4]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        set runlst ""
+        foreach line [split [data_from $ret] "\n"] {
+            if { [regexp {(\S+)\s+CPU-\S+(.*)} $line match app rest] } {
+
+                if { $app == "bvcigmgr" } {
+                    continue
+                }
+
+                if { [regexp {.*Stopped.*} $rest match] } {
+                    continue
+                }
+
+                lappend runlst "$app"
+            }
+        }
+
+        return [list "true" "$runlst"]
+    }
+
+    foreach app $applst {
+        set bv_cmd "nrsp running $app"
+        set exp "Application.*$::prompt($this)"
+
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 4]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        if { ![regexp "\~~.*($app.*PID\\s+\\d+)" [data_from $ret] match data] } {
+            write_error "could not get $app data"
+            return [list false [data_from $ret]]
+        }
+
+        foreach line [split $data "\n"] {
+            if { ![regexp {(CPU-.*)\s+\S+\s+Running\s+PID\s+\d+} $line match cpu] } {
+                write_warning "$line"
+            }
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_nrsp_list { mode } {
+
+    set spawn_id $::sid($this)
+
+    switch $::prompt($this) {
+        
+        $root_prompt {
+            set bv_cmd "nrsp list"
+        }
+
+        $admin_prompt {
+            set bv_cmd "show cpustat"
+        }
+
+        default {
+            set bv_cmd "nrsp list"
+        }
+    }
+
+    set exp "$bv_cmd.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set count 0
+    set noact ""
+    foreach line [split $ret "\n"] {
+        if { [regexp {^(CPU-\S+)\s+(\w+)(\s)?(\w+)?\s+\d} $line match cpu state] } {
+            incr count
+            if { $state != "Active" } {
+                lappend noact $cpu
+            }
+        }
+    }
+
+    if { [info exists ::sys_info(CPU)] } {
+        set cpucount [expr $::sys_info(CPU)]
+        if { $count != $cpucount } {
+            write_error "Missing CPU stats, expected $cpucount got $count - [data_from $ret]"
+            return [list false "Missing CPU stats, expected $cpucount got $count"]
+        }
+    } else {
+        return [list true "$count"]
+    }
+
+    if { $noact != "" } {
+        write_error "CPU \"$noact\" state not Active - [data_from $ret]"
+        return [list false "[llength $noact] CPU states not Active"]
+    }
+
+    # if all went well return true.
+    return [list true "$count"]
+}
+
+itcl::body bivio::bivio_nrsp_reset { mode cpulst } {
+
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    foreach cpu $cpulst {
+        set ok 0
+        if { $cpu != "all" } {
+            set bv_cmd "nrsp reset CPU-$cpu"
+            set exp "Hard reset of CPU-${cpu}c1 is now in progres"
+        } else {
+            set bv_cmd "nrsp reset all"
+            set exp "Hard reset of .* is now in progress"
+        }
+
+        write_info "Reseting CPU-$cpu"
+        set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 4]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        set loop 10 
+        for {set i 1} {$i <= $loop} {incr i} {
+            write_info "Checking cpu states attempt $i/$loop"
+            set ret [bivio_nrsp_list default]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                sleep 30
+                continue
+            } else {
+                set ok 1
+                break
+            }
+        }
+
+        if { $ok != 1 } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # sleep 30 sec, to make sure the CPUs are really really up.. this is required for builds 5.1.0.11 and up.
+    # replace this code later with somthing that will let us know for sure that the cpus are up.
+    write_step "waiting 30 sec to ensure the CPUs are fully up and ready.."
+    sleep 30
+
+    return [list true [data_from $ret]]
+}
+
+itcl::body bivio::bivio_sys_info {} {
+
+    set spawn_id $::sid($this)
+
+    array set ::sys_info ""
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$this bivio_show_version]
+    if { [problem_with $ret] } {
+        set ::sys_info(Build) "Unidentified Build"
+    } else {
+        set ::sys_info(Build) [data_from $ret]
+    }
+
+    # get the branding info
+    set bv_cmd "cat /proc/branding_info"
+    set exp "$bv_cmd.*$::prompt($this)"
+    
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }    
+
+    if { ![regexp {vendor:\s+(.*)\nos:\s+(.*)\nshell:\s+(.*)\nproduct:\s+(.*)\n\S+} \
+							$ret match ven os shell prod] } {
+        write_error "cannot determin sys info from $bv_cmd - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    # for consistancy and due to bug# 5303, changing all occurances of 7000 to 7500.
+    set prod [regsub "7000" $prod "7500"]
+
+    set ::sys_info(Vendor) "[string trim $ven]"
+    set ::sys_info(Os) "[string trim $os]"
+    set ::sys_info(Shell) "[string trim $shell]"
+    set ::sys_info(Product) "[string trim $prod]"
+
+    # get the i/o card info
+    set bv_cmd "cat /proc/iocards"
+    set exp "$bv_cmd.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { ![regexp -nocase {slot0:\s+(.*)\nslot1:\s+(.*)\n\S+} $ret match Slot0 Slot1] } {
+        write_error "cannot determin I/O info from $bv_cmd - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    foreach s {Slot0 Slot1} {
+        if { ![regexp -nocase "empty" [set $s] match] } {
+            if { ![regexp -nocase {(.*)\s+((card )?in state \w+)} [set $s] match type state] } {
+                write_error "cannot determin $s type or state - [set $s]"
+                return [list false [set $s]]
+            }
+            set ::sys_info($s) "$type"
+        } else {
+            set ::sys_info($s) "empty"
+        }
+    }
+
+    # determine the system type
+    set npc 0
+    set apc 0
+
+    set bv_cmd "nrinv"
+    set exp "$bv_cmd.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    foreach line [ split [data_from $ret] "\n" ] {
+        if { [regexp {Slot\s+\S+\s+APC\d+\s+SN:\s+(\S+)} $line match serial] } {
+            set ::sys_info(APC${apc}Serial) $serial 
+            incr apc
+        }
+
+        if { [regexp {Slot\s+\S+\s+NPC\d+\s+SN:\s+(\S+)} $line match serial] } {
+            set ::sys_info(NPC${npc}Serial) $serial 
+            incr npc
+        }
+    }
+
+    set ::sys_info(APCCount) "$apc"
+    set ::sys_info(NPCCount) "$npc"
+
+    # set the system type based on NPC APC count.
+    if { $npc == 1 && $apc == 0 } {
+        set ::sys_info(system) "7132"
+    } 
+
+    if { $npc == 1 && $apc == 1 } {
+        set ::sys_info(system) "Regular"
+    } 
+
+    if { $npc >= 2 && $apc <= 2 } {
+        set ::sys_info(system) "NPC Scaled"
+    }
+
+    if { $npc < 2 && $apc >= 2 } {
+        set ::sys_info(system) "APC Scaled"
+    }
+
+    if { $npc >= 2 && $apc > 2 } {
+        set ::sys_info(system) "NPC/APC Scaled"
+    }
+
+    # get the CPU count
+    set ret [bivio_nrsp_list default]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    set ::sys_info(CPU) [data_from $ret]
+
+    # all cpus minus the xlr cpus.
+    set ::sys_info(CPUNet) [expr $::sys_info(CPU) - (2 * $npc)]
+
+    # get firmware info
+    set bv_cmd "fwinfo"
+    set exp "$bv_cmd.*$::prompt($this)"
+
+    # it takes longer to determine the fwinfo info for a scaled system, so adjust the
+    # wait time acordingly.
+    if { [regexp {.*Scaled.*} "$::sys_info(system)" match] } {
+        set wait 20
+    } else {
+        set wait 5
+    }
+ 
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 3 $wait]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    append ret {HW Slot No.}
+    set data [regexp -nocase -inline -all {HW Slot No.*?(?=HW Slot No.)} $ret]
+    foreach line $data {
+        if { [regexp {HW\s+Slot\s+No.\s+(\d+).*ROM\s+version:\s+(\S+)\s+-\s+ENABLE.*(APC|NPC)\s+XPC\s+FPGA\s+version:\s+(\d+)} $line match slot rom type ver] } {
+            set ::sys_info($type$slot) "$ver"
+            set ::sys_info($type${slot}ROM) "$rom"
+        }
+
+        if { [regexp {HW\s+Slot\s+No.\s+(\d+).*\s+(Back Plane)\s+FPGA\s+version:\s+(\d+)} $line match slot type ver] } {
+            set ::sys_info(BackPlane$slot) "$ver"
+        }
+    }
+
+    set ::sys_info(FPGA) ""
+    foreach val {BackPlane0 NPC0 APC1} {
+        if {![info exists ::sys_info($val)] } {
+            set ::sys_info($val) NA
+        }
+        lappend ::sys_info(FPGA) $::sys_info($val)
+    }
+
+    set ::sys_info(FPGA) [join $::sys_info(FPGA) "/"]
+
+    set ::sys_info(ROM) ""
+    foreach val {NPC0ROM APC1ROM} {
+        if {![info exists ::sys_info($val)] } {
+            set ::sys_info($val) NA
+        }
+        lappend ::sys_info(ROM) $::sys_info($val)
+    }
+
+    set ::sys_info(ROM) [join $::sys_info(ROM) "/"]
+
+    # get cavium rpm version.
+    set cmd "rpm -q cavium"
+    set exp "$cmd.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    # get the cavium cpus if any in the system.
+    set cmd "bvcmd -pb apc service cavium status"
+    set exp "$cmd.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    foreach line [split [data_from $ret] \n] {
+        if { [regexp {(CPU-\d+c\d+):.* is loaded} $line match cvmcpu] } {
+            lappend ::cavium $cvmcpu
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_set_bypass { state } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "set-bypass $state all"
+    set exp "Card parameters set successfully"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 1 10]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "ifdisplay"
+    set exp "Interface .*$::prompt($this)"
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($this) 1 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { $state == "forced" } {
+        set exp "\[\+\|ByPass\]"
+    } else {
+        set exp "-"
+    }
+
+    foreach line [split [data_from $ret] "\n"] {
+        if { [regexp {s\d+.e\d+\s+(\S+)\s+\S+\s+\w+\s+\S+} $line match status] } {
+            if { ![regexp -nocase -- "$exp" $status match] } {
+                set msg "Requested bypass $state not set"
+                write_error "Expected bypass status $exp got $status - $line"
+                return [list fail $msg]
+            }
+        }
+    }
+    write_info "All port parameters set correctly to $exp"
+    return [list true "[data_from $ret]"]
+}
+
+itcl::body bivio::bivio_get_oemopt_mode {} {
+    set spawn_id $::sid($this)
+
+    switch -regexp $platform {
+        {BV7.*} {
+            # which command to use
+            if { $::prompt($this) == $root_prompt } {
+                set bv_cmd "oem-opt -l"
+                set exp {Current Mode: (mixed|trans-only)}
+            }
+            if { $::prompt($this) == $admin_prompt } {
+                set bv_cmd "show mode"
+                set exp {The current mode is: (mixed|transparent)}
+            }
+        }
+
+        {BV2.*} {
+            # which command to use
+            if { $::prompt($this) == $root_prompt } {
+                set bv_cmd "oem-opt -l"
+                set exp {Current mode: (mixed|transparent)}
+            }
+            if { $::prompt($this) == $admin_prompt } {
+                set bv_cmd "show mode"
+                set exp {The current mode is: (mixed|transparent)}
+            }
+        }
+
+        default {
+            # which command to use
+            if { $::prompt($this) == $root_prompt } {
+                set bv_cmd "oem-opt -l"
+                set exp {Current Mode: (mixed|trans-only)}
+            }
+            if { $::prompt($this) == $admin_prompt } {
+                set bv_cmd "show mode"
+                set exp {The current mode is: (mixed|transparent)}
+            }
+        }
+    }
+        
+    # using prompt as exp causes a match on the previous prompt..no-good
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        write_info "Did not get the $exp!"
+        return [list false [data_from $ret]]
+    }
+
+    if {![regexp $exp [data_from $ret] retstr mode] } {
+        write_info "Can not determine system mode."
+        return [list false [data_from $ret]]
+    }
+ 
+    switch -exact -- $mode {
+        trans-only	-
+        transparent 	{return [list true transparent]}
+        mixed		{return [list true mixed]}
+        default		{return [list false $mode]}
+    } ;# switch
+}
+
+itcl::body bivio::bivio_run_mfgtest {} {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "ls /etc/bivio/.diag/mfgtest"
+    set exp "/etc/bivio/.diag/mfgtest"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 1 5]
+    if { [problem_with $ret] } {
+        set msg "/etc/bivio/.diag/mfgtest does not exists"
+        write_error "$msg"
+        return [list false "$msg"]
+    }
+
+    set bv_cmd "/etc/bivio/.diag/mfgtest"
+    set exp ".*Test Summary.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        write_error "Could not run mfg validation test - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    if { ![regexp {Test Summary[.]+(\w+)} [data_from $ret] match res] } {
+        write_error "Can not get mfg validation test results - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    if { $res != "PASSED" } {
+        write_error "mfg validation test $res - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    return [list true "[data_from $ret]"]
+}
+
+itcl::body bivio::bivio_port_map {} {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "bivio-ifconfig map list"
+    set exp "$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 1 5]
+    if { [problem_with $ret data] } {
+        set msg "Could not get port mapping info - [data_from $ret]"
+        write_error "$msg"
+        return [list false "$msg"]
+    }
+
+    set out ""
+    foreach line [split [data_from $ret] \n]  {
+        set line [string trim $line]
+        if { [regexp {\*.*} $line match] } {
+            append out "$line\n"
+        }
+    }
+
+    return [list true "$out"]
+}
+
+itcl::body bivio::bivio_io_ports { slot } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "cat /proc/s$slot"
+    set exp "IO card.*$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 1 5]
+    if { [problem_with $ret] } {
+        set msg "Could not get slot $slot port info - [data_from $ret]"
+        write_error "$msg"
+        return [list false "$msg"]
+    }
+
+    set out ""
+    foreach line [split [data_from $ret] \n]  {
+        set line [string trim $line]
+        if { [regexp {Port\s+\d+,} $line match] } {
+            append out "$line\n"
+        }
+    }
+
+    return [list true "$out"]
+}
+
+itcl::body bivio::bivio_configure { mode cmd } {
+
+    set spawn_id $::sid($this)
+    set ret [bivio_change_user admin root $admin_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # configure will change the prompt to admin:<mode>
+    set cfg_prompt [regsub "admin:" $admin_prompt "admin:$mode"]
+
+    # change to configure mode
+    set bv_cmd "configure $mode"
+    set ret [send_expect_pair $spawn_id $bv_cmd $cfg_prompt $cfg_prompt 5 3]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # set the global prompt to the new prompt
+    set ::prompt($this) $cfg_prompt
+
+    if { $cmd != "" } {
+        # execute the configure command    
+        set bv_cmd "$cmd"
+        set ret [send_expect_pair $spawn_id $bv_cmd $cfg_prompt $cfg_prompt 5 3]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        # exit out of configure mode
+        set bv_cmd "up"
+        set ret [send_expect_pair $spawn_id $bv_cmd $admin_prompt $admin_prompt 5 3]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        # set the global prompt to the new prompt
+        set ::prompt($this) $admin_prompt
+    }
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_generate_cli_data { cli file mode} {
+
+    set spawn_id $::sid($this)
+
+    write_info "Generating CLI data for \"$cli\""
+
+    # Issue the cmd with ? to see if there are sub commands.
+    flush_exp_buffer $spawn_id
+
+    if { $cli == "help"} {
+        exp_send -h "$cli\r"
+    } else {
+        exp_send -h "$cli \?\r"
+    }
+
+    expect {
+
+        -re "Commands available in mode.*:(.*)Use.*$::prompt($this)" {
+            # clean the output string so it can be read better.
+            set out [string trim $expect_out(1,string)]
+            set out [regsub -all {[ \r\t\n]+} $out " "]
+            foreach line [split $out " "] {
+                lappend cmdlst $line
+            }
+            flush_exp_buffer $spawn_id
+        }
+
+        -re "Available arguments at this position are:(.*)$::prompt($this)" {
+            foreach line [split $expect_out(1,string) \n] {
+                if { [regexp {(\S+)\s+-\s+\S+} $line match cmd] } {
+                    lappend cmdlst $cmd
+                }
+            }
+            flush_exp_buffer $spawn_id
+        }
+
+        -re ".*No more known arguments for.*" {
+            sleep 2
+            flush_exp_buffer $spawn_id
+        }
+
+        -timeout 5 timeout {
+            set msg "Timedout waiting for responce from \"$cli \?\""
+            write_error "$msg"
+            exp_send -h "\003"
+            flush_exp_buffer $spawn_id
+            return [list "false" "$msg"]
+        }
+
+        eof {
+            set msg $expect_out(buffer)
+            write_received "$msg"
+            write_error "Connection to $this failed"
+            return [list "false" "$msg"]
+        }
+    }
+
+    # send a carridge return to clear the previous command
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+
+    # Reissue the cmd without the ? to the get the actual output of the cmd
+    flush_exp_buffer $spawn_id
+    match_max 1000000
+    exp_send -h "$cli\r"
+
+    expect { 
+        -re "$::prompt($this).*${cli}(.*)$::prompt($this)" {
+            set gout "$expect_out(1,string)"
+        }
+
+        -timeout 5 timeout {
+            set msg "Timedout waiting for responce from \"$cli\""
+            write_error "$msg"
+            exp_send -h "\003"
+            flush_exp_buffer $spawn_id
+            return [list "false" "$msg"]
+        }
+            
+        eof {
+            set msg $expect_out(buffer)
+            write_received "$msg"
+            write_error "Connection to $this failed"
+            return [list "false" "$msg"]
+        }   
+    }       
+
+    match_max -d
+
+    # Create the code file by writing the cmd and output to file.
+    set fd [open "$file" a+]
+    puts $fd [string repeat "#" 100]
+
+    # replace all numeric values with wildcard
+    set gout [regsub -all {\d+} $gout "*"]
+    puts $fd "set \{CLI\($cli\)\} \{\n[string trim $gout]\n\}"
+    close $fd
+
+    # Source the ignore list, which contains the list of cmds to ignore.
+    set ifile "[file join [file dirname $file] "ignore.data"]"
+    source "$ifile"
+
+    if { [info exists cmdlst] && [llength $cmdlst] != "0" && $mode == "full"} {
+        foreach cmd $cmdlst {
+            if { [lsearch $ignore "$cli $cmd"] >= 0 } {
+                write_info "Ignoring command: $cli $cmd"
+                continue
+            }        
+            bivio_generate_cli_data "$cli $cmd" $file full
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_config_jumbo { state } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    switch $state {
+        "on" -
+
+        "enable" {
+            set stat_str "Enabled"
+            set bv_cmd {bvspcfgset /bivio/nrsp/carddb/jumbo_default -i 1}
+            set exp {Setting key \"/bivio/nrsp/carddb/jumbo_default\" to \"1\"}
+            set buflen {nros modify /tftpboot/nros.apc3 -ca zcopy.buflen=9600}
+        }
+
+        "off" -
+
+        "disable" {
+            set stat_str "Disabled"
+            set bv_cmd {bvspcfgset /bivio/nrsp/carddb/jumbo_default -i 0}
+            set exp {Setting key \"/bivio/nrsp/carddb/jumbo_default\" to \"0\"}
+            set buflen {nros modify /tftpboot/nros.apc3 -cr ""}
+        }
+    }
+
+    # Enable Jumbo frames on the I/O card
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # Apply the config change to the I/O card
+    set bv_cmd {nrsp -c reconfig}
+    set exp "Reloading configuration.*Success.*Reconfiguring cards.*Success"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # Verify config on I/O 
+    set bv_cmd {nrsp -c view s0.e0}
+    set exp "Jumbo Frames\\\s+:\\\s+$stat_str"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # Setup the correct buffer length on the APC CPU's
+    set bv_cmd $buflen
+    set exp {Modification Complete}
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set ret [bivio_nrsp_reset default all]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_wget { server src dst } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # get the file only if its newer.
+    set bv_cmd "wget -N -O $dst http://[file join $server [string trim $src /]]"
+    set exp "HTTP request sent, awaiting response... 200 OK.*$root_prompt"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 1 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_rpm_info { rpm } {
+    set spawn_id $::sid($this)
+
+    set rpm [file tail $rpm]
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # query the package
+    set bv_cmd "rpm -qip $rpm"
+    set exp "$bv_cmd.*Description.*$root_prompt"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 3 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { ![regexp {Name\s+:\s+(\S+).*Version\s+:\s+(\S+).*Release\s+:\s+(\S+)} [data_from $ret] match name ver rel] } {
+        write_warning "Could not get $rpm package info"
+        return [list false [data_from $ret]]
+    }
+    
+    return [list true "$name $ver $rel"]
+}
+
+itcl::body bivio::bivio_install_rpm { rpm } {
+    set spawn_id $::sid($this)
+
+    set rpm [file tail $rpm]
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set ret [bivio_rpm_info $rpm]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set rpmn [lindex [data_from $ret] 0]
+    set pname [join [data_from $ret] "-"]
+
+    # Check to see if package is already installed.
+    set bv_cmd "rpm -q $rpmn"
+    set exp "$bv_cmd.*$root_prompt"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { [regexp "$pname" [data_from $ret] match] } {
+        write_info "$rpm is already installed"
+        return [list true ""]
+    }
+
+    # install package
+    set bv_cmd "rpm -Uvh --force --nodeps $rpm"
+    set exp "1:$rpmn.*\\\[100%\\\]"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 1 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # verify package was installed
+    set bv_cmd "rpm -q $rpmn"
+    set exp $pname
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_check_alarms { state } {
+    set spawn_id $::sid($this)
+
+    if { $::prompt($this) == $admin_prompt } {
+        set bv_cmd "show alarm $state"
+    }
+
+    if { $::prompt($this) == $root_prompt } {
+        set bv_cmd "nrsp -e alarms $state"
+    }
+
+    switch $state {
+        all {
+            set exp "Unacknowledged Alarms:\(.*\)Acknowledged Alarms Still Active:\(.*\)$::prompt($this)"
+        }
+
+        active {
+            set exp "Unacknowledged Alarms Still Active:\(.*\)Acknowledged Alarms Still Active:\(.*\)$::prompt($this)"
+        }
+
+        unack {
+            set exp "Unacknowledged Alarms:\(.*\)$::prompt($this)"
+        }
+
+        default {
+            write_error "Incorrect alarm state - $state"
+            return [list false ""]
+        }
+    }
+
+    # get the output for all alarms.
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $root_prompt 2 5]
+    if { [problem_with $ret] } {
+        return [list false "[data_from $ret]"]
+    }
+
+    if { ![regexp $exp "[data_from $ret]" match data1 data2] } {
+        write_error "Unable to get alarm data - [data_from $ret]"
+        return [list false "[data_from $ret]"]
+    }
+
+    if { ![regexp {There are currently no .* alarms} "$data1" match] } {
+        write_warning "Possible alarms detected - [data_from $ret]"
+        return [list false "[data_from $ret]"]
+    }
+
+    if { $data2 != "" } {
+        if { ![regexp {There are currently no .* alarms} "$data1" match] } {
+            write_warning "Possible alarms detected - [data_from $ret]"
+            return [list false "[data_from $ret]"]
+        }
+    }
+
+    return [list true "[data_from $ret]"]
+}
+
+itcl::body bivio::bivio_fpga_send_expect { cmd exp } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user xlr "" $xlr_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "$cmd"
+
+    if { $exp == "" } {
+        set exp "$cmd.*$::prompt($this)"
+    }
+
+    set out [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true "[data_from $out]"]
+}
+
+itcl::body bivio::bivio_reboot_xlr { } {
+
+    set spawn_id $::sid($this)
+    set gretry 15 	;# max number of attempts before giving-up
+    set duration 20 	;# wait (in sec.) for each attempt   
+    set lretry $gretry
+    set attempt 1
+
+    write_debug "Connecting to XLR console"
+    set ret [bivio_change_user xlr "" $xlr_prompt]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+    write_step "Rebooting XLR"
+    flush_exp_buffer $spawn_id
+
+    set cmd "reboot"
+    exp_send -h "$cmd\r"
+    write_sent "$cmd"
+
+    while {$lretry > 0} {
+        expect { 
+            -ex "CIG Config updated" {
+                set msg $expect_out(buffer)
+                write_received $msg
+                flush_exp_buffer $spawn_id
+
+                write_debug "CIG config upload done..waiting for \"$xlr_prompt\"" 
+                exp_send -h "\r"
+                exp_continue
+            }
+   
+            -ex "Press any key to abort." {
+                set msg $expect_out(buffer)
+                write_received $msg
+                flush_exp_buffer $spawn_id
+
+                # do nothing until download starts lest the entire boot halts
+                write_debug "Waiting for XLR binary download to start" 
+                expect -timeout 20 -re {Bytes downloaded: \d+} {
+                    set msg $expect_out(buffer)
+                    write_received $msg
+                    flush_exp_buffer $spawn_id
+                } ;# expect
+
+                exp_continue
+            }
+
+            -re {tftpc: download done.*bvxlr \$} {
+                set msg $expect_out(buffer)
+                write_received $msg
+                flush_exp_buffer $spawn_id
+  
+                # do nothing until xlr binary is running
+                write_debug "Waiting downloaded XLR binary to launch" 
+                expect -timeout 20 -ex "Application Launched Successfully" {
+                    set msg $expect_out(buffer)
+                    write_received $msg
+                    flush_exp_buffer $spawn_id
+                } ;# expect
+
+                exp_continue
+            } 
+
+            -re "$xlr_prompt \r" {
+                set msg $expect_out(buffer)
+                write_received $msg
+                flush_exp_buffer $spawn_id
+
+                write_info "Got back the XLR prompt. Leaving XLR console"
+                set ret [bivio_change_user root root $root_prompt]
+
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+                write_debug "XLR rebooted successfully"
+                return [list true [data_from $ret]]
+            }
+
+            -timeout $duration timeout {
+                write_warning "Timedout waiting for response - ($attempt/$gretry)"
+                exp_send -h "\r\r\r"
+                write_debug "Sent carriage-returns"  
+
+                # check if we got dropped to the other prompt
+                expect -timeout 3 -re {(\nC4_XLR.+\$ \r+){2,}} {
+                    set msg $expect_out(buffer)
+                    write_received $msg
+                    flush_exp_buffer $spawn_id
+
+                    write_debug "Attempting re-boot after previous XLR boot halted"
+                    exp_send -h "$cmd\r"
+                    write_sent "$cmd"
+                } ;# expect
+
+                incr attempt
+                incr lretry -1
+            }
+
+            eof {
+                write_error "Connection to $spawn_id failed"
+                break
+            }
+        } ;# expect
+    } ;# while
+ 
+    set msg [data_from [flush_exp_buffer $spawn_id]]
+    write_error "$msg"
+    return [list "false" "$msg"]
+}
+
+itcl::body bivio::bivio_alert_count { mode app resarray } {
+    set spawn_id $::sid($this)
+
+    upvar $resarray arr 
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cpu_dir {/bivio/shared/cpus}
+
+    set cmd "ls $cpu_dir"
+    set exp "$cmd.*$::prompt($this)"
+    set out [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    # remove all unicode chars that trip up the script in 5.1 builds.
+    set clean [regsub -all {\u001b\[01;34m|\u001b\[0m} [data_from $out] {}]
+
+    set filelst [regexp -all -inline {CPU-\d+\S+\d+} $clean]
+    set tcount 0
+
+    foreach afile $filelst {
+
+        switch $app {
+            "snort" {
+                set fpath [file join $cpu_dir $afile $app alert]
+                set bv_cmd "cat $fpath \| wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            "bro" {
+                set fpath [file join $cpu_dir $afile $app]
+                set bv_cmd "find -L $fpath -maxdepth 1 -type f ! -size 0 | wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            "yaf" {
+                set fpath [file join $cpu_dir $afile $app out]
+                set bv_cmd "find -L $fpath -maxdepth 1 -type f ! -size 0 | wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            "sancp" {
+                set fpath [file join $cpu_dir $afile $app today]
+                set bv_cmd "find -L $fpath -maxdepth 1 -type f -size +10M | wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            "arpwatch" {
+                set fpath [file join $cpu_dir $afile $app]
+                set bv_cmd "find -L $fpath -maxdepth 1 -type f ! -size 0 | wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            "squid" {
+                set fpath [file join $cpu_dir $afile $app $app.conf]
+                set bv_cmd "find -L $fpath -maxdepth 1 -type f ! -size 0 | wc -l"
+                set exp "$::prompt($this)"
+            }
+
+            default {
+                write_error "Unsupported application - $app"
+                return [list false [data_from $out]]
+            }
+        }
+
+        if { $mode == "clean" } {
+            set bv_cmd "rm -rf $fpath"
+            set exp "$::prompt($this)"
+        }
+
+        set out [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+        if { [problem_with $out] } {
+            return [list false [data_from $out]]
+        }
+
+        if { $mode == "clean" } {
+             write_info "$mode option selected - $fpath removed"
+             continue
+        }
+
+        foreach line [split [data_from $out] \n] {
+            if { [regexp {^\d+} $line match] } {
+                set count $match
+            }
+        }
+
+        set arr($afile) $count
+        set tcount [expr $tcount + $count]
+    }
+
+    set arr(Total) $tcount
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_file_operation { action src dst } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    switch $action {
+        "copy" {
+            lappend bv_cmd "alias cp=cp"
+            lappend bv_cmd "cp -f $src $dst"
+            set exp "$::prompt($this)"
+        } 
+
+        "move" {
+            lappend bv_cmd "alias mv=mv"
+            lappend bv_cmd "mv $src $dst"
+            set exp "$::prompt($this)"
+        } 
+
+        "remove" {
+            lappend bv_cmd "alias rm=rm"
+            lappend bv_cmd "rm $src"
+            set exp "$::prompt($this)"
+        }
+    }
+
+    foreach cmd $bv_cmd {
+        set out [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+        if { [problem_with $out] } {
+            return [list false [data_from $out]]
+        }
+    }
+
+    # check to see if te file exists at the destination
+    if { $action == "remove" } {
+        set bv_cmd "ls -Q $src"
+        set exp "No such file or directory"
+    } else {
+        set bv_cmd "ls -Q [file join $dst [file tail $src]]"
+        set exp "\"[file join $dst [file tail $src]]\""
+    }
+
+    set out [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_cig_reload { } {
+    set spawn_id $::sid($this)
+
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "bvcig reload"
+    set exp "Current configuration is up-to-date"
+
+    set out [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 3 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body bivio::bivio_scp_file { src dst passwrd } {
+
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    flush_exp_buffer $spawn_id
+    write_sent "scp $src $dst"
+    exp_send -h "scp $src $dst\r"
+
+    # need a sleep here for some reason.
+    sleep 1
+
+    set ret [$this bivio_general_expect root $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { [regexp {.*100%.*} [data_from $ret] match ] } {
+        write_step "SCP of $src to $dst successfull"
+        return [list true [data_from $ret]]
+    }
+
+    return [list "false" [data_from $ret]]
+}
+
+itcl::body bivio::bivio_get_routed_mode { host } {
+    set spawn_id $::sid($this)
+
+    write_info "changing user to root"
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "bvcmd -p -b $host cat /proc/sys/net/ipv4/ip_forward"
+    set exp "$cmd.*$::prompt($this)"
+    set out [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    foreach line [split [data_from $out] "\n"] {
+        if { [regexp {(CPU-\S+):\s+(\d+)} $line match cpu stat] } {
+            lappend mode($stat) $cpu
+        }
+    }
+
+    if { [array size mode] != 1 } {
+        write_info "Mixed mode detected : [array get mode]"
+        return [list "false" [array get mode]]
+    }
+
+    write_info "Routed mode for $host set to [array names mode]"
+    return [list "true" [array names mode]]
+}
+
+itcl::body bivio::bivio_set_routed_mode { host mode } {
+    set spawn_id $::sid($this)
+
+    write_info "changing user to root"
+    set ret [bivio_change_user root root $root_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Setting routed mode for $host to $mode"
+    set cmd "bvcmd -p -b $host sysctl -w net.ipv4.ip_forward=$mode"
+    set exp "$cmd.*$::prompt($this)"
+    set out [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $out] } {
+        return [list false [data_from $out]]
+    }
+
+    set ret1 [bivio_get_routed_mode $host]
+    if { [problem_with $ret1] } {
+        write_error [data_from $ret1]
+        return [list false [data_from $ret1]]
+    }
+
+    if { [data_from $ret1] != $mode } {
+        write_error "routed mode for $host not set to $mode : [data_from $ret1]"
+        return [list false [data_from $ret1]]
+    }
+
+    return [list "true" [data_from $ret1]]
+}
+
+itcl::body bivio::bivio_set_access { mode stat } {
+
+    set lretry $gretry
+    set attempt 1
+    set res [list false ""]
+
+    set ret [bivio_configure system ""]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set spawn_id $::sid($this)
+
+    exp_send -h "set access $mode $stat\r"
+
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Do you want to enable outside access(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Do you want to enable outside access)"
+                flush_exp_buffer $spawn_id
+                exp_send -h "y\r"
+                write_sent "y"
+                exp_continue
+            }
+
+            -nocase {Access will be enabled when you "commit boot"} {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Access will be enabled when you)"
+                flush_exp_buffer $spawn_id
+                exp_send -h "commit boot\r"
+                write_sent "commit boot"
+                exp_continue
+            }
+
+            -nocase "(.*)$mode access is already $stat (.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Access will be enabled when you)"
+                flush_exp_buffer $spawn_id
+                set res [list "true" "$msg"]
+                break
+            }
+
+            -re (.*)$::prompt($this) {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                set res [list "true" "$msg"]
+                break
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\003"
+                incr attempt
+                incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+
+    flush_exp_buffer $spawn_id
+
+    set ret [$::dut bivio_change_user root root $root_prompt]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return $res
+}
+
+itcl::body bivio::bivio_updaterom { server romfile mode } {
+
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+
+    set exprom ""
+    if { [regexp {romext_(\S+).bin} [file tail $romfile] match exprom] } {
+        write_debug "Expected rom version is: $exprom"
+        if { [info exists ::sys_info(system)] && $::sys_info(system) == "7132"} {
+            set exprom "$exprom/NA"
+        } else {
+            set exprom "$exprom/$exprom"
+        }
+    }
+
+    if { $::sys_info(ROM) == $exprom } {
+        write_info "ROM - Current: $::sys_info(ROM), Expected: $exprom - no need to update"
+        return [list true ""]
+    }
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # fetching the rom file from server
+    set ret [linux_tftp_get $spawn_id $server "$romfile" $root_prompt]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # it takes longer to perform a rom update for a scaled system, so adjust the
+    # wait time acordingly.
+    if { [info exists ::sys_info(system)] && [regexp {.*Scaled.*} "$::sys_info(system)" match] } {
+        set loop 50
+    } else {
+        set loop 20
+    }
+
+    write_step "Updating rom on $::dut to [file tail $romfile] using the \"updaterom\" cmd"
+    set bv_cmd "updaterom [file tail $romfile]"
+    set exp "$bv_cmd.*Please reboot"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp "" $loop 30 "" noresend ]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # if full mode is selected then continue to reboot the system as suggested.
+    if { $mode == "full" } {
+        set ret [$this bivio_reboot ""]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # verify the extended rom
+    set ret [$this bivio_sys_info]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { $::sys_info(ROM) != $exprom } {
+        write_error "ROM - Current: $::sys_info(ROM), Expected: $exprom - ROM DID NOT updated successfully" 
+        return [list false [data_from $ret]]
+    }
+        
+    return [list "true" [data_from $ret]]
+}
+
+itcl::body bivio::bivio_update_fpga { server fpgafile mode } {
+
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+
+    set fpga ""
+    if { [regexp {bp(\d+).xpc(\d+)} [file tail $fpgafile] match bp xpc] } {
+        write_debug "Expected fpga version is: $bp/$xpc/$xpc"
+        set fpga "$bp/$xpc/$xpc"
+    }
+
+    if { $::sys_info(FPGA) == $fpga } {
+        write_info "FPGA - Current: $::sys_info(FPGA), Expected: $fpga - no need to update"
+        return [list true ""]
+    }
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # fetching the fpga file from server
+    set ret [$this bivio_wget $server $fpgafile [file tail $fpgafile] ]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Updating FPGA on $::dut using [file tail $fpgafile]"
+    set bv_cmd "sh [file tail $fpgafile] -f"
+    set exp "$::prompt($this)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 10 60 "" noresend ]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # if full mode is selected then continue to power cycle the system as suggested.
+    if { $mode == "full" } {
+
+        set spawin_id $::sid($this)
+
+        upvar #1 bv bvinfo
+
+        set delay 40
+
+        set outlet "$bvinfo(RemotePower)"
+
+        write_step "Resetting outlet $outlet"
+        set ret [$::rpower_dut0 rpower_reset_outlet $outlet $delay]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        write_step "Check to see if bivio came up ok"
+        set bv_cmd {}
+        set exp "ogin:"
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp "" 25 20 "" "noresend"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        # Loginto device and set the propmt
+        exp_send "\r"
+        set ret [$this bivio_general_expect root root ]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # verify the fpga
+    set ret [$this bivio_sys_info]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+     if { $::sys_info(FPGA) != $fpga } {
+         write_error "FPGA - Current: $::sys_info(FPGA), Expected: $fpga - FPGA DID NOT updated successfully"
+         return [list false [data_from $ret]]
+    }
+
+    return [list "true" [data_from $ret]]
+}
+
+# the following line must be left at the bottom of the script.
+package provide bivio 1.0

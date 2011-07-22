@@ -1,0 +1,1094 @@
+#!/usr/bin/expect --
+
+##################################################################################################
+##												##
+## Bivio Test Center (BTC)									##
+## This is the main script that sets up the environment and executes the requested actions.	##
+## Author: wsultani										##
+## Date: 04/01/2008										##
+##												##
+##################################################################################################
+
+package require mysqltcl 
+
+proc main { margs } {
+
+    # store the home dir info
+    set home_dir [pwd]
+
+    # set the local mysql handle to the global handle
+    set mysql $::mysql
+
+    upvar $margs marray
+
+    if { $marray(-testbed) == "list" && $::cfg == "db" } {
+        set sql_cmd "SELECT Testbed FROM btc_testbeds GROUP BY Testbed"
+        if { [catch {::mysql::sel $mysql $sql_cmd -list} ret] } {
+            write_error "could not exec sql cmd : $sql_cmd - $ret"
+            exit
+        }
+        set tb_list $ret
+    } else {
+        set tb_list $marray(-testbed)
+    }
+
+    foreach tb $tb_list {
+
+        set tfields {DevClass DevName DevNum}
+
+        switch $::cfg {
+            "file" {
+                source $marray(-cfgfile)
+                if { $testbed(name) == $tb } {
+                    # get a list of all devices for testbed
+                    foreach dev [array names testbed] {
+
+                        # ignore the name field in testbed array.
+                        if { $dev == "name" } {
+                            continue
+                        }
+
+                        lappend devlist "[set ${dev}(Class)] [set ${dev}(Name)] 0"
+                    }
+                } else {
+                    write_error "Testbed $tb not found in $marray(-cfgfile)"
+                    exit
+                }
+            }
+
+            default {
+                # get the list of devics and connection info for the testbed
+                set sql_cmd "SELECT [join $tfields ,] FROM btc_testbeds WHERE Testbed=\"$tb\""
+
+                if { [catch {::mysql::sel $mysql $sql_cmd -list} devlist] } {
+                    write_error "could not exec sql cmd : $sql_cmd - $devlist"
+                    exit
+                }
+            }
+        }
+
+        # if no devices were found then exit test.
+        if { [llength $devlist] <= 0 } {
+            write_error "No info found matching testbed $tb"
+            exit
+        }
+
+        write_info "[llength $devlist] devices found in testbed $tb"
+        write_step "$tb - $devlist"
+    }
+
+    if { $marray(-testbed) == "list" } {
+        write_info "Print out available testbeds and exit"
+        exit
+    }
+
+    set dev_types ""
+
+    # for each device get dev info and connect to dev.
+    foreach dev $devlist {
+
+        for {set x 0} {$x <= [llength $tfields]} {incr x} {
+            set [lindex $tfields $x] [lindex $dev $x]
+        }
+
+        foreach {dname dval} [array get testbed] {
+            if { $dval == $DevName } {
+                set devid $dname
+                break
+            }
+        }
+
+        switch $DevClass {
+            bivio {
+
+                if { [lsearch -exact $dev_types "bv"] < 0 } {
+                    lappend dev_types bv
+                }
+
+                set bfields {Platform Class Name IPAddress Login Password Console Connection Port RemotePower RPLogin RPPassword}
+
+                if { $::cfg == "file" } {
+
+                    set ret ""
+                    foreach bf $bfields {
+                        if { [info exists ${devid}($bf)] } {
+                            lappend ret "[set ${devid}($bf)]"
+                        }
+                    }
+
+                } else {
+
+                    set sql_cmd "SELECT [join $bfields ,] FROM btc_bivio_inventory WHERE Name=\"$DevName\""
+
+                    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                        write_error "could not exec sql cmd : $sql_cmd - $ret"
+                        exit
+                    }
+                }
+
+
+                foreach field $bfields value $ret {
+                    set bv($field) $value
+                }
+
+                # create the bivio object
+                set ret [eval $bv(Class) $bv(Name) $bv(IPAddress) $bv(Login) $bv(Password) $bv(Console) \
+                        $bv(Port) $bv(Connection) $bv(Platform)]
+                set ::bv$DevNum "::$ret"
+
+               # if the bivio has a remote power, then connect to it.
+               if { [info exists bv(RemotePower)] && $bv(RemotePower) != "" } {
+
+                   package require rpower
+
+                   # connect to the remote power server
+                   set ret [rpower #auto $bv(RemotePower) $bv(RPLogin) $bv(RPPassword)]
+                   if { $ret == "" } {
+                       write_error [data_from $ret]
+                       exit
+                   }
+                   set ::rpower_bv${DevNum} ::$ret
+               }
+           }
+
+            adb {
+
+                if { [lsearch -exact $dev_types "adb"] < 0 } {
+                    lappend dev_types adb
+                }
+
+                package require adb
+
+                set pfields {OS Class Name IPAddress Login Password Connection Interface InterfaceIP RemotePower DeviceID}
+                if { $::cfg == "file" } {
+
+                    set ret ""
+                    foreach pf $pfields {
+                        if { [info exists ${devid}($pf)] } {
+                            lappend ret "[set ${devid}($pf)]"
+                        }
+                    }
+
+                } else {
+                    set sql_cmd "SELECT [join $pfields ,] FROM btc_adb_inventory WHERE Name=\"$DevName\""
+
+                    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                        write_error "could not exec sql cmd : $sql_cmd - $ret"
+                        exit
+                    }
+                }
+
+                foreach field $pfields value $ret {
+                    set adb($field) $value
+                }
+
+                # check to see if device exists
+                set cmd "adb devices"
+                if { [catch {eval exec $cmd} ret] } {
+                    write_error "Can not exec $cmd - $ret"
+                    return [list false $ret]
+                }
+
+                if { ![regexp "$adb(DeviceID)" $ret match] } {
+                    write_error "Device $adb(DeviceID) does not exist - $ret"
+                    return [list false $ret]
+                }
+
+                # create the bivio object
+                set ret [eval $adb(Class) $adb(Name) $adb(DeviceID) $adb(IPAddress) $adb(Login) $adb(Password) $adb(Connection)]
+                set ::adb$DevNum "::$ret"
+
+               # if the pc has a remote power, then connect to it.
+               if { [info exists adb(RemotePower)] && $adb(RemotePower) != "" } {
+
+                   package require rpower
+
+                   # connect to the remote power server
+                   set ret [rpower #auto $adb(RemotePower) admin cosmo]
+                   if { $ret == "" } {
+                       write_error [data_from $ret]
+                       exit
+                   }
+                   set ::rpower_adb${DevNum} ::$ret
+               }
+           }
+
+            pc {
+
+
+                if { [lsearch -exact $dev_types "pc"] < 0 } {
+                    lappend dev_types pc
+                }
+
+                package require pc
+
+                set pfields {OS Class Name IPAddress Login Password Connection Interface InterfaceIP RemotePower}
+                if { $::cfg == "file" } {
+
+                    set ret ""
+                    foreach pf $pfields {
+                        if { [info exists ${devid}($pf)] } {
+                            lappend ret "[set ${devid}($pf)]"
+                        }
+                    }
+
+                } else {
+                    set sql_cmd "SELECT [join $pfields ,] FROM btc_pc_inventory WHERE Name=\"$DevName\""
+
+                    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                        write_error "could not exec sql cmd : $sql_cmd - $ret"
+                        exit
+                    }
+                }
+
+                foreach field $pfields value $ret {
+                    set pc($field) $value
+                }
+
+                # create the bivio object
+                set ret [eval $pc(Class) $pc(Name) $pc(IPAddress) $pc(Login) $pc(Password) $pc(Connection)]
+                set ::pc$DevNum "::$ret"
+
+               # if the pc has a remote power, then connect to it.
+               if { [info exists pc(RemotePower)] && $pc(RemotePower) != "" } {
+
+                   package require rpower
+
+                   # connect to the remote power server
+                   set ret [rpower #auto $pc(RemotePower) admin cosmo]
+                   if { $ret == "" } {
+                       write_error [data_from $ret]
+                       exit
+                   }
+                   set ::rpower_pc${DevNum} ::$ret
+               }
+           }
+
+            sw {
+
+                if { [lsearch -exact $dev_types "sw"] < 0 } {
+                    lappend dev_types sw
+                }
+
+                package require sw
+
+                set sfields {Type Class Name IPAddress Login Password Console Connection Port RemotePower}
+
+                if { $::cfg == "file" } {
+
+                    set ret ""
+                    foreach sf $sfields {
+                        if { [info exists ${devid}($sf)] } {
+                            lappend ret "[set ${devid}($sf)]"
+                        }
+                    }
+
+                } else {
+                    set sql_cmd "SELECT [join $sfields ,] FROM btc_sw_inventory WHERE Name=\"$DevName\""
+
+                    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                        write_error "could not exec sql cmd : $sql_cmd - $ret"
+                        exit
+                    }
+                }
+
+                foreach field $sfields value $ret {
+                    set sw($field) $value
+                }
+
+                # create the switch object
+                set ret [eval $sw(Class) $sw(Name) $sw(IPAddress) $sw(Login) $sw(Password) $sw(Console) \
+                        $sw(Port) $sw(Connection)]
+                set ::sw$DevNum "::$ret"
+
+               # if the pc has a remote power, then connect to it.
+               if { [info exists sw(RemotePower)] && $sw(RemotePower) != "" } {
+
+                   package require rpower
+
+                   # connect to the remote power server
+                   set ret [rpower #auto $sw(RemotePower) admin cosmo]
+                   if { $ret == "" } {
+                       write_error [data_from $ret]
+                       exit
+                   }
+                   set ::rpower_sw${DevNum} ::$ret
+               }
+           }
+
+            smb {
+
+                set smb_mode remote
+
+                set sfields {Class Name IPAddress SMBSlot BVSlot}
+
+                if { $::cfg == "file" } {
+
+                    set ret ""
+                    foreach sf $sfields {
+                        if { [info exists ${devid}($sf)] } {
+                            lappend ret "[set ${devid}($sf)]"
+                        }
+                    }
+
+                } else {
+                    set sql_cmd "SELECT [join $sfields ,] FROM btc_smb_inventory WHERE Name=\"$DevName\""
+
+                    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                        write_error "could not exec sql cmd : $sql_cmd - $ret"
+                        exit
+                    }
+                }
+
+                foreach field $sfields value $ret {
+                    set smb($field) $value
+                }
+
+                if { $smb_mode == "remote" && ![info exists ::smbserver] } {
+
+                    # location of the smb tmp file.
+                    set timefmt {%Y%m%d-%H%M%S}
+                    set timestamp [timestamp -format $timefmt]
+                    set ::smb(dir) [file join "/export/scooby/smbmnt" "$timestamp"]                 
+
+                    package require pc
+
+                    set smbserver(Class) pc
+                    set smbserver(Name) smbserver
+                    set smbserver(IPAddress) 192.168.2.37
+                    set smbserver(Login) root
+                    set smbserver(Password) wallaby10
+                    set smbserver(Connection) ssh
+
+                    # create the smbserver object and open a connection to the smbapi server
+                    set ret [eval $smbserver(Class) $smbserver(Name) $smbserver(IPAddress) \
+                                  $smbserver(Login) $smbserver(Password) $smbserver(Connection)]
+
+                    set ::smbserver "::$ret"
+
+                    set sid $::sid($::smbserver)
+
+                    set cmd_list {{export LD_LIBRARY_PATH="/usr/local/smartbits/SmartBitsAPI/bin"} \
+                                  {export PATH="$PATH:/usr/local/smartbits/SmartBitsAPI/bin"}}
+
+                    foreach cmd $cmd_list {
+                        set exp ""
+
+                        set ret [send_expect_pair $sid $cmd $exp "$::prompt($::smbserver)" 2 3]
+                        if { [problem_with $ret] } {
+                            write_error [data_from $ret]
+                            return [list false [data_from $ret]]
+                        }
+                    }
+
+                    # save the location of the current working dir
+                    set restore [pwd]
+
+                    # create the smb testdir
+                    set cmd "mkdir -m 777 $::smb(dir)"
+                    set exp ""
+
+                    set ret [send_expect_pair $sid $cmd $exp "$::prompt($::smbserver)" 2 5]
+                    if { [problem_with $ret] } {
+                        write_error [data_from $ret]
+                        return [list false [data_from $ret]]
+                    }
+
+                    # change to the smb testdir
+                    set cmd "cd $::smb(dir)"
+                    set exp ""
+
+                    set ret [send_expect_pair $sid $cmd $exp "$::prompt($::smbserver)" 2 5]
+                    if { [problem_with $ret data] } {
+                        write_error [data_from $ret]
+                        return [list false [data_from $ret]]
+                    }
+
+                    # check smb availability.
+                    set cmd "smbapi -a $smb(IPAddress)"
+                    set exp ".*Available.txt and exiting.*$::prompt($::smbserver)"
+
+                    set ret [send_expect_pair $sid $cmd $exp "" 2 10 "" noresend]
+                    if { [problem_with $ret] } {
+                        write_error [data_from $ret]
+                        return [list false [data_from $ret]]
+                    }
+
+                }
+
+                # change to the test dir
+                if { [catch "cd $::smb(dir)" err] } {
+                    write_error "could not cd to $::logdir - $err"
+                    return [list false "$err"]
+                }
+
+                # get smb chassis info from the smbapi -a and Available.txt file.
+                # set stat [catch "exec smbapi -a $smb(IPAddress) >@stdout" ret ]
+    
+                set fp [open "Available.txt" r]
+                set data [read $fp]
+                close $fp
+
+                #file delete -force Available.txt
+
+                if { ![regexp {(\d+):(\d+)} $smb(SMBSlot) match hub slot] } {
+                    set hub 0
+                    set slot $smb(SMBSlot)
+                }
+
+                # parse the smb port info for the perticular smb slot.
+                set SMBPort 0
+                foreach line [split $data "\n"] {
+                    if { [regexp "[format %02s $hub]:[format %02s $slot]:\\d+" $line match] } {
+                        incr SMBPort
+                    }
+                }
+
+                # store the smb info in a global array.
+                set ::smb(IP) "$smb(IPAddress)"
+                set ::smb($smb(SMBSlot)) "$smb(BVSlot) $SMBPort"
+
+                # change back to original dir
+                if { [catch "cd $restore" err] } {
+                    write_error "could not cd to $restore - $err"
+                    return [list false "$err"]
+                }
+            }
+
+            aval {
+                # if avalanche is configured, set stc_mode to remote.
+                # this field is used below to create an stcserver object.
+                set stc_mode "remote"
+            }
+        }
+    }
+
+    # set what device in the testbed should be the dut
+    set ::dut0 $::adb0
+    lappend dev_types dut
+
+    # set the reference to the master device
+    foreach master $dev_types {
+        set lowest "::[lindex [lsort -increasing [info globals $master*]] 0]"
+        set ::$master [set ${lowest}]
+    }
+
+    # get the system info
+    write_step "Getting system Info"
+    set ret [$::dut sys_info]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach dut [info globals {dut[0-9]*}] {
+        set ldut [set ::$dut]
+
+        if { [info exists marray(-updaterom)] && $marray(-updaterom) != "" } {
+
+            # if auto install is not selected, then reboot the system at the end
+            # of rom update.
+            if { [info exists marray(-autoinstall)] && [info exists marray(-build)] } {
+                set mode ""
+            } else {
+                set mode "full"
+            }
+
+            write_step "Updating rom on $ldut to $marray(-updaterom)"
+            set ret [$ldut bivio_updaterom 192.168.120.1 "$marray(-updaterom)" "$mode"]
+            if { [problem_with $ret] } {
+                write_error "failed to updaterom to $marray(-updaterom) on $ldut - [data_from $ret]"
+                exit
+            }
+        }
+
+        if { [info exists marray(-autoinstall)] && [info exists marray(-build)] } {
+            # already checked the format for the build earlier so start install.
+            package require install_build
+
+            #set ret [install_build $ldut $marray(-build)]
+            set ret [$::adb adb_clean_install $marray(-build)]
+            if { [problem_with $ret] } {
+                write_error "failed to load build $marray(-build) - [data_from $ret]"
+                exit
+            }
+        }
+
+        if { [info exists marray(-fpga)] && $marray(-fpga) != "" } {
+
+            write_step "Updating fpga on $ldut to $marray(-fpga)"
+            set ret [$ldut bivio_update_fpga 192.168.120.1 "$marray(-fpga)" "full"]
+            if { [problem_with $ret] } {
+                write_error "failed to update the FPGA to $marray(-fpga) on $ldut - [data_from $ret]"
+                exit
+            }
+        }
+
+        if { [info exists marray(-nccsinstall)] && [info exists marray(-nccsbuild)] } {
+            package require install_build
+
+            set ret [install_nccs_build $ldut $marray(-nccsbuild)]
+            if { [problem_with $ret] } {
+                write_error "failed to load NCCS build $marray(-nccsbuild) - [data_from $ret]"
+                exit
+            }
+        }
+    }
+
+    # get the system info
+    write_step "Getting system Info"
+    set ret [$::dut sys_info]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set build(Version) "$::sys_info(Build)"
+
+    if { [regexp {NCCS} $build(Version) match] } {
+
+        package require nccs
+
+        set nccs(Class) nccs
+        set nccs(Name) "nccsdut"
+        set nccs(IPAddress) [$::dut cget -ip_add]
+        set nccs(Login) admin
+        set nccs(Password) admin
+        set nccs(Connection) telnet
+
+        # create the nccs object
+        set ret [eval $nccs(Class) $nccs(Name) $nccs(IPAddress) $nccs(Login) $nccs(Password) $nccs(Connection)]
+        set ::nccs "::$ret"
+
+        if { ![info exists stc_mode] } {
+            set stc_mode ""
+        }
+
+        if { $stc_mode == "remote" && ![info exists ::stcserver] } {
+
+            package require stc_avalanche
+
+            # location of the stc tmp file.
+            set timefmt {%Y%m%d-%H%M%S}
+            set timestamp [timestamp -format $timefmt]
+            set ::stc(dir) [file join "/export/scooby/smbmnt" "$timestamp"]
+
+            # create the stc testdir
+            set cmd "mkdir -m 777 $::stc(dir)"
+            set exp ""
+
+            package require pc
+
+            set stcserver(Class) pc
+            set stcserver(Name) stcserver
+            set stcserver(IPAddress) 192.168.2.37
+            set stcserver(Login) root
+            set stcserver(Password) wallaby10
+            set stcserver(Connection) ssh
+
+            # create the stcserver object and open a connection to the smbapi server
+            set ret [eval $stcserver(Class) $stcserver(Name) $stcserver(IPAddress) \
+                          $stcserver(Login) $stcserver(Password) $stcserver(Connection)]
+
+            set ::stcserver "::$ret"
+
+            set sid $::sid($::stcserver)
+
+            set cmd_list {{export SPIRENT_TCLAPI_ROOT="/usr/local/stc/Layer_4_7_Auto_Linux_3.60/Layer_4_7_Application_Linux/TclAPI"} {export SPIRENT_TCLAPI_LICENSEROOT="/usr/local/stc/license"}}
+
+            foreach cmd $cmd_list {
+                set exp "$::prompt($::stcserver)"
+
+                set ret [send_expect_pair $sid $cmd $exp "$::prompt($::stcserver)" 2 3]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+            }
+
+            flush_exp_buffer $sid
+
+            
+            set cmd "/etc/init.d/sshd start"
+            set exp {Starting sshd:.*OK}
+
+            set ret [send_expect_pair $::sid($::dut) $cmd $exp "$::prompt($::dut)" 2 3]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+    }
+
+    # construct the build info array
+    array set build ""
+    set build(Log) "$::logdir"
+    set build(type) build
+    set build(Platform) "Unknown"
+    #set build(Platform) "$bv(Platform)"
+    set build(Testbed) "$marray(-testbed)"
+    set build(FailCount) 0
+    set build(PassCount) 0
+    set build(Total) 0
+    set build(TotalReq) 0
+
+    set build(FPGA) "NA"
+    set build(ROM) "NA"
+    #set build(FPGA) $::sys_info(FPGA)
+    #set build(ROM) $::sys_info(ROM)
+
+    # create the system serial list
+    if { [info exists marray(-serials)] && $marray(-serials) != "" } {
+        foreach dsname $marray(-serials) {
+            lappend build(Serials) $dsname
+        }
+    }
+
+    #foreach sname [array names ::sys_info {*Serial}] {
+    #    lappend build(Serials) $::sys_info($sname)
+    #}
+    lappend build(Serials) "NA"
+
+    set tnow [regsub -- "-" [file tail $::logdir] ""]
+    set build(Date) $tnow
+
+    # get the list of testcases for the selected suites.
+    if { [info exists marray(-suite)] && $marray(-suite) != "" } {
+        foreach suite $marray(-suite) {
+            set fields {Name}
+            set sql_cmd "SELECT [join $fields ,] FROM btc_tests WHERE Suite=\"$suite\" ORDER BY Name"
+
+            if { [catch {::mysql::sel $mysql $sql_cmd -list} ret] } {
+                write_error "could not exec sql cmd : $sql_cmd - $ret"
+                exit
+            }
+
+            if { [llength $ret] <= 0 } {
+                write_error "No suite found matching \"$suite\" in database"
+                continue
+            } else {
+                foreach tc $ret {
+                    if { [lsearch -exact $marray(-testcase) $tc] >= 0 } {
+                        continue
+                    }
+                    lappend marray(-testcase) $tc
+                }
+            }
+        }
+
+        if { [llength $marray(-testcase)] <= 0 } {
+            write_error "no testcases to run"
+            exit
+        }
+    }
+
+    # Run the testcases
+    write_step "Preparing to run [llength $marray(-testcase)] testcases"
+
+    set build(TotalReq) [expr $::loop * [llength $marray(-testcase)]]
+
+    set runtime 0
+    set newlst ""
+
+    foreach tstc $marray(-testcase) {
+
+        set ftc [lindex $tstc 0]
+
+        # auto load the testcase proc
+        if { [catch "package require $ftc" ret] } {
+            write_error "$ftc not found"
+            continue
+        }
+
+        # forget about the package untill needed below.
+        package forget $ftc
+
+        # check to see if testcase is runable
+        set ret [is_runable $ftc]
+        if { [problem_with $ret] } {
+            write_warning "$ftc not runabl. Required element\
+                        \([data_from $ret]\) does not exists"
+            write_info "[info globals]"
+            continue
+        }
+
+        write_info "$ftc runable. Required element \([data_from $ret]\) exists"
+        lappend newlst $tstc
+
+        # calculate the ETA for requested tests.
+        set ret [get_avrg_time $ftc]
+        if { [problem_with $ret] || [data_from $ret] == ""} {
+            write_warning "Can not get average time for $ftc"
+        } else {
+            set runtime [expr $runtime + [data_from $ret]]
+        }
+    }
+
+    set marray(-testcase) $newlst
+    if { [llength $marray(-testcase)] <= 0 } {
+        write_error "no testcases to run"
+        exit
+    }
+
+    write_step "Can run [llength $marray(-testcase)] testcases"
+
+    if { $runtime != "0" } {
+        set runtime [expr $runtime * $::loop]
+        set eta "[clock format [expr [clock seconds] + $runtime] -format %H:%M:%S]"
+        write_debug "Test will run for approx. $runtime sec"
+        write_step "Estimated Time of Completion : $eta" 
+    }
+
+    if { [info exists marray(-ETA)] && $marray(-ETA) != "" } {
+        write_info "BTC called with ETA arg. Exiting harness"
+        exit
+    }
+
+    if { [info exists marray(-comments)] } {
+        set build(Comments) "$marray(-comments)"
+    }
+
+    # initialise the total warnings.
+    set ::warnings(Total) 0
+
+    # loop the testcase requested number of times, default is once.
+    while { $::loop > 0 } {
+        if { [info exists marray(-loop)] } {
+            set loopnum "[expr ($marray(-loop) - $::loop) + 1]/$marray(-loop)"
+        } else {
+            set loopnum "$::loop/$::loop"
+        }
+
+        write_info "Looping testcases $loopnum times"
+        foreach tc $marray(-testcase) {
+
+            # set the gloabl warning array for testcase
+            set ::warnings($tc) ""
+
+            # change to home dir. This is required incase a testcase changes the
+            # home dir.
+            if { [catch "cd $home_dir" err] } {
+                write_warning "could not cd to $home_dir - $err"
+            }
+
+            # just incase testcase is called with args.
+            set tc_full $tc
+            set tc [lindex $tc 0]
+
+            # create a unique testcase log
+            set timenow [clock format [clock seconds] -format {%H%M%S}]
+            set tclog "[regsub -all " " $tc "-"]-$timenow.log"
+
+            set ret [custom_open_file $tclog $tc]
+            if { [problem_with $ret] } {
+                write_warning "cannot open $tclog - [data_from $ret]"
+            }
+
+            array set tc_info ""
+            set tc_info(type) testcase
+            set tc_info(log) $tclog
+
+            if { [info exists marray(-comments)] } {
+                set tc_info(Comments) "$marray(-comments)"
+            }
+
+            # auto load the testcase proc
+            if { [catch "package require $tc" ret] } {
+                write_error "$tc not found"
+                continue
+            }
+
+            if { [info procs $tc] == "" } {
+                write_error "testcase proc $tc not found."
+                continue
+            }
+            set tc_info(Name) $tc
+
+            # get the testcase description.
+            set fields {Description}
+            set sql_cmd "SELECT [join $fields ,] FROM btc_tests WHERE Name=\"$tc\""
+
+            if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+                write_error "could not exec sql cmd : $sql_cmd - $ret"
+                exit
+            }
+            set tc_info(Title) [lindex $ret 0]
+
+            write_step "Running testcase $tc"
+            set tc_time [time { set ret [eval $tc_full] }]  
+            if { [problem_with $ret] } {
+                incr build(FailCount)
+                write_result FAIL $tc
+                set tc_info(Result) FAIL
+                set tc_info(FailCount) {FailCount + 1}
+                set tc_info(Failure) [data_from $ret]
+                write_info "Testcase $tc_info(Name) $tc_info(Result) - $tc_info(Failure)"
+            } else {
+                incr build(PassCount)
+                set tc_info(Result) PASS
+                set tc_info(PassCount) {PassCount + 1}
+                write_result PASS $tc 
+                write_info "Testcase $tc_info(Name) $tc_info(Result)"
+            }
+            set tc_info(AvgTime) [expr round( [lindex $tc_time 0]/1000000 )]
+            write_info "Testcase $tc_info(Name) took: $tc_info(AvgTime)"
+
+            incr build(Total)
+
+            set ret [calc_avrg_time tc_info]
+            if { [problem_with $ret] } {
+       	        write_warning "Couldn't calculate average time for $tc - [data_from $ret]"
+       	        unset tc_info(AvgTime)
+            } else {
+                set tc_info(AvgTime) [data_from $ret]
+            }
+
+            set tc_info(Version) "$build(Version)"
+
+            set ret [update_mysql_db tc_info force]
+            if { [problem_with $ret] } {
+                puts "$tc info on db not updated - [data_from $ret]"
+            }
+            update_custom_summary tc_info
+
+            # unset the tc info for the testcase
+       	    array unset tc_info
+        }
+        incr ::loop -1
+    }
+
+    write_step "Testing Completed - Ran [llength $marray(-testcase)] testcases $loopnum times." 
+
+    # create the teardown log
+    set ret [custom_open_file taredown.log Taredown]
+    if { [problem_with $ret] } {
+        write_warning "cannot open taredown.log - [data_from $ret]"
+    }
+
+    # calculate the passrate for the build.
+    if { $build(TotalReq) != 0 && $build(Total) != 0 } {
+        if { $build(TotalReq) < $build(Total) } {
+            set build(PassRate) [expr round(($build(PassCount).0/$build(Total).0) * 100)]
+        } else {
+            set build(PassRate) [expr round(($build(PassCount).0/$build(TotalReq).0) * 100)]
+        }
+    } else {
+        set build(PassRate) 0
+    }
+
+    # update the build db for this run.
+    set ret [update_mysql_db build force]
+    if { [problem_with $ret] } {
+        puts "build info on db not updated - [data_from $ret]"
+    }
+    custom_summary build
+
+    # send email notification
+    if { [info exists marray(-mail)] && $marray(-mail) != "" } {
+        write_step "Sending notification emails"
+        send_notification_email "build" "$marray(-mail)"
+    }
+
+    # if the power down option is selected and the system has rpower then power down the system.
+    if { $marray(-powerdown) == "1" && $bv(RemotePower) != "" } {
+        write_step "Preparing to power down $::dut \($::rpower_dut0\)"
+        set ret [$::rpower_dut0 rpower_switch_outlet off $bv(RemotePower)]
+        if { [problem_with $ret data] } {
+            write_warning "Could not power down $::dut - [data_from $ret]"
+        }
+    }
+        
+    
+}
+
+proc makeindex { {dir "\*"} } {
+    foreach d [glob -nocomplain -type d $dir] {
+        # if there are no file in the dir then continue.
+        if { [glob -nocomplain -directory $d *] == "" } {
+            continue
+        }
+
+        catch "pkg_mkIndex $d *" ret
+
+        if { [file exists [file join $d pkgIndex.tcl]] } {
+            if { [catch {file attributes [file join $d pkgIndex.tcl] -permissions 0777} err] } {
+                #do nothing
+            }
+        }
+        lappend ::auto_path $d
+        makeindex [file join $d *]
+    }
+}
+
+##################################################################################
+##										##
+##				Start of script					##
+##										##
+#################################################################################
+
+# create the index file for all the required packages.
+makeindex
+package require bivio 
+package require btc_log 
+package require btc_write 
+package require btc_utils 
+package require btc_update_db 
+package require mailer 
+
+# to turn on spawn logging set to 1 or comment out
+log_user 0
+
+# to enable expect debugging set to 1 or comment out
+exp_internal 0
+
+set ::verbose 1
+
+array set BTC ""
+set BTC(Description) { BTC : Bivo Test Center } 
+set BTC(Syntax) { syntax : ./BTC ?arg value ?arg value .... }
+set BTC(Arguments) { 
+		{ -testbed "(required)\tthe testbed id as defined in db" } \
+		{ -testcase "(required)\tsingle or list of testcases to run" } \
+		{ -suite "(optional)\tthe suite of testcases to run" } \
+		{ -cfgfile "(optional)\tuse the local testbed config file instead of DB" } \
+		{ -platform "(optional)\tthe dut platform as defined in db" } \
+		{ -verbose "(optional)\tVerbose level (1-3) sets the verbose level, default is 1" } \
+		{ -post "(optional)\tenable posting to database, default is enabled, 0=disable 1=enable" } \
+		{ -loop "(optional)\tnumber of iteration to perform" } \
+		{ -mail "(optional)\tlist of email notification recipients" } \
+		{ -autoinstall "(optional)\tinstall build on the dut before commencing tests, 0=disable 1=enable" } \
+		{ -updaterom "(optional)\tupdate the rom using the updaterom script" } \
+		{ -fpga "(optional)\tupdate the fpga using the shell script" } \
+		{ -build "(required)\tthe build to install" } \
+		{ -nccsinstall "(optional)\tinstall NCCS build before commencing tests, 0=disable 1=enable" } \
+		{ -nccsbuild "(optional)\tthe NCCS build to install" } \
+		{ -break "(optional)\tuse with loop. break out of the loop if matched message type" } \
+		{ -pause "(optional)\tpause the test on matched message type" } \
+		{ -comments "(optional)\tadd user comments" } \
+		{ -force "(optional)\treset the console port if busy" } \
+		{ -ETA "(optional)\tgives the estimated ETA time" } \
+		{ -powerdown "(optional)\tpower down the system after testing is completed" } \
+		{ -serials "(optional)\tlist of serials to add to the system" } \
+		{ -logging "(optional)\tenable logging to file, default is enabled, 0=disable 1=enable" }
+}
+
+# If suite is passed in and testcase is not fake the required testcase field.
+if { [lsearch -regexp $argv "-suite"] >= 0 && [lsearch -regexp $argv "-testcase"] < 0 } {
+     lappend argv {-testcase} ""
+}
+
+if { [lsearch -regexp $argv "-autoinstall"] >= 0 && [lsearch -regexp $argv "-build"] < 0 } {
+     puts "-build is required if -autoinstall is selected"
+     exit
+}
+
+if { [lsearch -regexp $argv "-nccsinstall"] >= 0 && [lsearch -regexp $argv "-nccsbuild"] < 0 } {
+     puts "-nccsbuild is required if -nccsinstall is selected"
+     exit
+}
+
+array set argarray ""
+set ret [check_usage argv BTC]
+if { [problem_with $ret] } {
+    exit
+}
+
+# arrange the args in an array for easy access.
+list_2_array [data_from $ret] argarray
+
+# initialise the global arguments
+foreach garray { {verbose 1} {post 1} {logging 1} {loop 1} {break 1} {pause 1} {force 0} } {
+    set glob [lindex $garray 0]
+    set ival [lindex $garray 1]
+    if { [info exists argarray(-$glob)] } {
+        set ::$glob $argarray(-$glob)
+    } else {
+        # enable logging to file by default
+        set ::$glob $ival
+    }
+}
+
+if { $::verbose == 2 } {
+    log_user 1
+}
+
+# set the default value for argarray(-powerdown). powerdown is not a global argument.
+if { ![info exists argarray(-powerdown)] } {
+    set argarray(-powerdown) 0
+}
+
+if { [info exist argarray(-build)] } {
+    if { [file dirname $argarray(-build)] != "." } {
+        set lbuild [file tail $argarray(-build)]
+    } else {
+        set lbuild $argarray(-build)
+    }
+
+#    if { ![regexp {(fcdist|zdist).\d+.\d+.\d+} $lbuild match] } {
+#        write_error "build format is incorrect \($lbuild\), should be \(fcdist.x.x.x or zdist.x.x.x\)"
+#        exit
+#    }
+}
+
+set ::cfg "db"
+if { [info exists argarray(-cfgfile)] } {
+    if { [file exists $argarray(-cfgfile)] } {
+        set ::cfg "file"
+    } else {
+        write_error "$argarray(-cfgfile) does not exist."
+        exit
+    }
+}
+
+#---------------------------------------------------------------------------------
+# mysql info required to connect to database and set up the test harness
+set mysql_server localhost
+set mysql_user btc_user
+set mysql_password btc_user
+set mysql_port 23
+set mysql_database btc_db
+
+::mysqlclose
+
+# connect to mysql server to get harnesss info
+if { [catch {::mysql::connect -h $mysql_server -user $mysql_user \
+		-password $mysql_password -db $mysql_database} ret] } {
+    write_error "Unable to connect to $mysql_server - $ret"
+    exit
+}
+
+# set the local mysql object name. All calls to the mysql server will
+# have to use this object name.
+set ::mysql $ret 
+write_info "connected to $mysql_server \($ret\)"
+#---------------------------------------------------------------------------------
+
+set timefmt {%Y%m%d-%H%M%S}
+set timestamp [timestamp -format $timefmt]
+
+set ::logdir ""
+# create the log directory
+if { $::logging == 1 } {
+    set logdir "/var/www/html/logs"
+    set ret [mk_dir "$::logdir $argarray(-testbed) $timestamp"]
+    if { [problem_with $ret] } {
+        write_warning "[data_from $ret]"
+        exit
+    }
+    set ::logdir [data_from $ret]
+    write_step "Logging results to : $::logdir"
+}
+
+# create the setup log
+set ret [custom_open_file setup.log Setup]
+if { [problem_with $ret] } {
+    write_warning "[data_from $ret]"
+}
+
+# call the main worker proc
+set main_time [ time { main argarray } ]
+write_info "Elapsed time : $main_time"
+
+#TODO - Cleanup, close all open connections and exit gracefully.
+# close the taredown log
+custom_close_file

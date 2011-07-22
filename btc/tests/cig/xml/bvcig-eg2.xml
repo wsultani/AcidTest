@@ -1,0 +1,63 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #2: Simple Copying">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <CIG:Interface name="s0.e0" type="transparent"/>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- first dmz net inspection group -->
+   <CIG:InspectionGroup name="dmz-ig1">
+      <CIG:Cpus from="apc">1</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+   <!-- second dmz net inspection group -->
+   <CIG:InspectionGroup name="dmz-ig2">
+      <CIG:Cpus from="apc">1</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for dmz net interfaces -->
+   <CIG:TrafficSet name="dmz">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="dmz-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="load-balance">dmz-ig1</CIG:Action>
+         <CIG:Action type="load-balance">dmz-ig2</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- ARP traffic class -->
+      <CIG:TrafficClass name="dmz-arp">
+         <CIG:Classification>ETH_ARP_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- IPv6 traffic class -->
+      <CIG:TrafficClass name="dmz-IPv6">
+         <CIG:Classification>IPV6_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="dmz-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

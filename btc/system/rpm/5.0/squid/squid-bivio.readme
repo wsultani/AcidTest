@@ -1,0 +1,91 @@
+=========================================
+Squid For The Bivio 7000 Series
+=========================================
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+Squid is a caching proxy for the Web supporting HTTP, HTTPS, FTP, and more.
+It reduces bandwidth and improves response times by caching and reusing 
+frequently-requested web pages. Squid has extensive access controls 
+and makes a great server accelerator. It runs on Unix and Windows and is 
+licensed under the GNU GPL. 
+
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+
+Squid needs to be able to do DNS lookups through one of the ports.
+There are different ways to do this depending on your deployment.
+
+
+1. You can set the IP for the DNS server to be the one used by 
+port on the NIM for Squid. 
+
+2. You can set the secondary DNS server to be one that is accessible
+through one of the routable interfaces on the NIM.
+
+3. A DNS server can be connected through the Auxillary Port on the 
+front of the system. The IP address would need to fall under the access
+of the internal Bivio network.
+
+4. You can use IPTables forwarding functionality to send requests from an
+APC cpu out the mgt0 interface. Bivio can provide a script for this.
+
+
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+rpm -Uvh squid-3.0.STABLE5-1.B7000.ppc.rpm 
+
+-----------------------------------------
+Configuration
+-----------------------------------------
+
+You can make changes to startup options
+in the startup file /etc/init.d/squidctl
+
+In this script is the option to set a gateway for the APC cpus.
+By default this is commented out but most likely it will need
+to be set.
+
+The default squid.conf is stored in /usr/share/doc/squid. 
+Changes can be made to this file though we do not want to overwrite any
+of the logging directories as these are needed for the Bivio System.
+
+The startup script can take the "install" option which will copy that 
+script and apply the changes for the conf to be used by the Bivio 
+distributed architecture.
+
+Typical Configuration 
+-----------------
+
+1. Edit the default squid.conf at /usr/share/doc/squid/squid.conf
+
+2. Edit /etc/init.d/squidctl. Set the gateway information if needed. 
+Add any desired command line options
+
+
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Install the squid.conf and create directories. 
+This only needs to be done once, or anytime you make changes
+to the squid.conf .
+    
+    /etc/init.d/squidctl install
+
+2. Start squid through nrsp
+
+    nrsp start squid
+
+
+

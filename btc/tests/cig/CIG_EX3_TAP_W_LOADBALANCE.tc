@@ -1,0 +1,55 @@
+#!/usr/bin/expect --
+
+proc CIG_EX3_TAP_W_LOADBALANCE {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test CIG tap and loadbalancing action using Sample #3 in /etc/bivio/bvcig/examples.}
+set ${p}(Suite)		{cig}
+set ${p}(Comments)	{}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{09-11-13}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require cigprocs
+
+    set cfgarr(cfg) zbridgeapp
+    set cfgarr(rpmlst) ""
+    set cfgarr(mbps) 200
+    set cfgarr(pkt_count) 1000
+    set cfgarr(pcaplst) {"ether_128B_IPV4_UDP_1burst1000.pcap"}
+
+    # define testcase xml 
+    set srcdir "automation/btc/tests/cig/xml"
+    set srcfile "bvcig-eg3.xml"
+    set cfgarr(testcase_xml) [file join $srcdir $srcfile]
+    set cfgarr(mode) "" 
+
+    # define array for comparison vs. cpu stats
+    set core_count 2
+    set packet_count_percore [expr {$cfgarr(pkt_count) / $core_count}]
+    set coreideal(rx_tolerance) 0
+    set coreideal(cpu-1c0_rx) $packet_count_percore 
+    set coreideal(cpu-1c1_rx) $packet_count_percore 
+    set coreideal(total_rx) $cfgarr(pkt_count) 
+    set coreideal(tx_tolerance) 0
+    set coreideal(cpu-1c0_tx) $packet_count_percore 
+    set coreideal(cpu-1c1_tx) $packet_count_percore 
+    set coreideal(total_tx) $cfgarr(pkt_count) 
+
+    # define array for comparison vs. xlr stats
+    set ingress s0.e0
+    set egress s0.e1
+    set ideal($ingress\_rx) $cfgarr(pkt_count) 
+    set ideal($egress\_tx) [expr {2 * $cfgarr(pkt_count)}] 
+    set ideal(stack_rx) [expr $ideal($ingress\_rx) + $ideal($egress\_tx)]
+
+    cigreturn [cig_shared_code]
+}
+
+# this is required for auto loading
+package provide CIG_EX3_TAP_W_LOADBALANCE 1.0

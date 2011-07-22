@@ -1,0 +1,82 @@
+#!/usr/bin/expect --
+
+proc BV_RPOWER_RESET_SIMPLE {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Use the remote power and reset the dut, then check to see if it cam up ok.}
+set ${p}(Suite)		{special}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut0 rpower_dut0}
+set ${p}(Created)	{08-04-04}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    upvar bv bvinfo
+
+    set delay 40
+
+    set outlet "$bvinfo(RemotePower)"
+
+    write_step "Resetting outlet $outlet"
+    set ret [$::rpower_dut0 rpower_reset_outlet $outlet $delay]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Check to see if bivio came up ok"
+    set bv_cmd {}
+    set exp "ogin:"
+    set ret [send_expect_pair $sid $bv_cmd $exp "" 25 20 "" "noresend"] 
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # Loginto device and set the propmt
+    set spawn_id $sid
+    exp_send "\r"
+    set ret [$::dut bivio_general_expect root root ]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Check system uptime on $::dut"
+    set bv_cmd "uptime"
+    set exp "$bv_cmd.*load average.*$prompt"
+    set ret [send_expect_pair $sid $bv_cmd $exp $prompt 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Checking cpu states"
+    for {set i 0} {$i < 10} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            set cpu_bad 1
+            sleep 30
+            continue
+        } else {
+            set cpu_bad 0
+            break
+        }
+    }
+
+    if { $cpu_bad == 1 } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide BV_RPOWER_RESET_SIMPLE 1.0

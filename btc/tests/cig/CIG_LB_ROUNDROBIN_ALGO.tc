@@ -1,0 +1,75 @@
+#!/usr/bin/expect --
+proc CIG_LB_ROUNDROBIN_ALGO {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test LB-Round-Robin algorithm to 12 cores in sniff mode.}
+set ${p}(Suite)		{cig}
+set ${p}(Comments)	{}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{09-12-04}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require cigprocs
+
+    set cfgarr(cfg) zbridgeapp
+    set cfgarr(rpmlst) ""
+    set cfgarr(mbps) 200
+    set cfgarr(pkt_count) 1000
+    set cfgarr(getcore) FALSE
+
+    # define list of pcap
+    set cfgarr(pcaplst) {
+    "stream0_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream1_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream2_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream3_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream4_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream5_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream6_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream7_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream8_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream9_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream10_ether_128B_IP4_UDP_1burst1000.pcap"\
+    "stream11_ether_128B_IP4_UDP_1burst1000.pcap"}
+
+    # define testcase xml 
+    set srcdir "automation/btc/tests/cig/xml"
+    set srcfile "ipv4_lb_roundrobin.xml"
+    set cfgarr(testcase_xml) [file join $srcdir $srcfile]
+    set cfgarr(mode) sniff
+
+    # need these for computing the hash line
+    # use the initial values defined in proc cig_shared_code
+
+    # define array for comparison vs. cpu stats
+    set coreideal(rx_tolerance) 3
+    set coreideal(cpu-1c0_rx) 84
+    set coreideal(cpu-1c1_rx) 84
+    set coreideal(cpu-2c0_rx) 84
+    set coreideal(cpu-2c1_rx) 84
+    set coreideal(cpu-3c0_rx) 84
+    set coreideal(cpu-3c1_rx) 84
+    set coreideal(cpu-4c0_rx) 84
+    set coreideal(cpu-4c1_rx) 84
+    set coreideal(cpu-5c0_rx) 84
+    set coreideal(cpu-5c1_rx) 84
+    set coreideal(cpu-6c0_rx) 84
+    set coreideal(cpu-6c1_rx) 84
+    set coreideal(total_rx) $cfgarr(pkt_count)
+
+    # define array for comparison vs. xlr stats
+    set ingress s0.e0
+    set egress s0.e1
+    set ideal($ingress\_rx) $cfgarr(pkt_count) 
+    set ideal(stack_rx) $cfgarr(pkt_count) 
+
+    cigreturn [cig_shared_code]
+} ;# proc
+
+# this is required for auto loading
+package provide CIG_LB_ROUNDROBIN_ALGO 1.0

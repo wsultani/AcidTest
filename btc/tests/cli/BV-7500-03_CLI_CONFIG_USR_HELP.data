@@ -1,0 +1,4442 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000228         
+APC1            : 13                  
+APC1ROM         : 2.45                
+APCCount        : 1                   
+BackPlane0      : 11                  
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45                
+NPC0Serial      : 7NPC-000240         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45/2.45           
+Shell           : Bivio CLI           
+Slot0           : 2-port RedHawk 10G with Silicom Bypass
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(help)} {
+<cmd>' to get more info about a specific command.
+}
+####################################################################################################
+set {CLI(help add)} {
+NAME
+    add
+
+DESCRIPTION
+    The add command is used to add (create) any kind of configuration
+    object into the system.
+
+SYNTAX
+    add user <user-name> role <role-name>
+
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+ARGUMENTS
+===== add user =====
+
+    user
+      Adds a new Bivio CLI user (account) to the system and assigns it the
+      specified role.
+
+
+    <user-name>
+      Supplies the name of the user to be added. An error message will be
+      generated if a Bivio CLI user with this name already exists, or if
+      the specified name is root or admin.
+
+
+    role
+      Used to specify the name of the role (privilege set) to be assigned
+      to this user.
+
+
+    <role-name>
+      Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user)} {
+SYNTAX
+    add user <user-name> role <role-name>
+
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+user
+  Adds a new Bivio CLI user (account) to the system and assigns it the
+  specified role.
+
+
+<user-name>
+  Supplies the name of the user to be added. An error message will be
+  generated if a Bivio CLI user with this name already exists, or if the
+  specified name is root or admin.
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user <user-name>)} {
+SYNTAX
+    add user user-name role <role-name>
+
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+user-name
+  Supplies the name of the user to be added. An error message will be
+  generated if a Bivio CLI user with this name already exists, or if the
+  specified name is root or admin.
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user <user-name> role)} {
+SYNTAX
+    add user user-name role <role-name>
+
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user <user-name> role admin)} {
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+admin
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user <user-name> role guest)} {
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+guest
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help add user <user-name> role operator)} {
+EXAMPLE
+    
+    
+    
+    add user operator* role operator
+    
+
+
+operator
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign)} {
+NAME
+    assign
+
+DESCRIPTION
+    Binds configuration information to the system.
+
+SYNTAX
+    assign user <user-name> role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+ARGUMENTS
+===== assign user =====
+
+    user
+      Changes the role assignment of the user user-name, to the role role.
+      Note that there is no way to "deassign" roles from users.
+
+
+    <user-name>
+      Supplies the name of the user to which to assign a new role.
+
+
+    role
+      Used to specify the name of the role (privilege set) to be assigned
+      to this user.
+
+
+    <role-name>
+      Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user)} {
+SYNTAX
+    assign user <user-name> role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+user
+  Changes the role assignment of the user user-name, to the role role. Note
+  that there is no way to "deassign" roles from users.
+
+
+<user-name>
+  Supplies the name of the user to which to assign a new role.
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user admin)} {
+SYNTAX
+    assign user admin role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+admin
+  Supplies the name of the user to which to assign a new role.
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user admin role)} {
+SYNTAX
+    assign user admin role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user admin role admin)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+admin
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user admin role guest)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+guest
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user admin role operator)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+operator
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user root)} {
+SYNTAX
+    assign user root role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+root
+  Supplies the name of the user to which to assign a new role.
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user root role)} {
+SYNTAX
+    assign user root role <role-name>
+
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+role
+  Used to specify the name of the role (privilege set) to be assigned to
+  this user.
+
+
+<role-name>
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user root role admin)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+admin
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user root role guest)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+guest
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help assign user root role operator)} {
+EXAMPLE
+    
+    
+    
+    assign user fred role operator
+    
+
+
+operator
+  Supplies the name of the role to assign to the user.
+}
+####################################################################################################
+set {CLI(help remove)} {
+NAME
+    remove
+
+DESCRIPTION
+    The remove command is used to remove (delete) any kind of configuration
+    object from the system.
+
+SYNTAX
+    remove user <user-name>
+    remove card obsolete
+    remove card serial <serial-no>
+    remove carddb label <label>
+    remove carddb serial <serial-no>
+    remove crashdump <CPU> <dump-file>
+    remove file <file-name>
+    remove software local-distribution-partition
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+ARGUMENTS
+===== remove user =====
+
+    user
+      Removes the specified Bivio CLI user (account) from the system. The
+      user is prompted to confirm the removal.
+
+
+    <user-name>
+      Supplies the name of the user to remove. An error message will be
+      generated if the user does not exist or if the supplied username is
+      root or admin. The assigned role is not affected by the removal.
+
+===== remove card =====
+
+    card
+
+    obsolete
+
+    serial
+
+    <serial-no>
+===== remove carddb =====
+
+    carddb
+      Remove entries from the database of card label and serial number
+      information. This database is used to maintain the identity of cards
+      as they are moved around in the system from slot to slot. Cards are
+      initially populated automatically into this database.
+
+
+    label
+      Remove the specified card label. The associated card can no longer be
+      referenced with this label.
+
+
+    <label>
+      Supplies the name of the label to be removed.
+
+
+    serial
+      Remove card information of the specified card.
+
+
+    <serial-no>
+      Supplies the serial number of the card to be removed.
+
+===== remove crashdump =====
+
+    crashdump
+      Remove a crash dump file. This can be used to reclaim some space on
+      the system.
+
+
+    <CPU>
+      Specifies either 'all' or a specific CPU where the crash dump file is
+      stored. If a specific CPU, this is the CPU which experienced the
+      crash.
+
+
+    <dump-file>
+      Specifies the name of the crash dump file.
+
+===== remove file =====
+
+    file
+      Remove files from the system file transfer directory. (Refer to
+      import and export command
+
+
+    <file-name>
+      Supplies name of the file to be removed. This name is the name of a
+      file within the system file transfer directory.
+
+===== remove software =====
+
+    software
+
+    local-distribution-partition
+}
+####################################################################################################
+set {CLI(help remove card)} {
+SYNTAX
+    remove card obsolete
+    remove card serial <serial-no>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+card
+
+obsolete
+
+serial
+
+<serial-no>
+}
+####################################################################################################
+set {CLI(help remove card obsolete)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+obsolete
+}
+####################################################################################################
+set {CLI(help remove card serial)} {
+SYNTAX
+    remove card serial <serial-no>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+serial
+
+<serial-no>
+}
+####################################################################################################
+set {CLI(help remove card serial 7APC-000228)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+*APC-*
+}
+####################################################################################################
+set {CLI(help remove card serial 7NPC-000240)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+*NPC-*
+}
+####################################################################################################
+set {CLI(help remove carddb)} {
+SYNTAX
+    remove carddb label <label>
+    remove carddb serial <serial-no>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+carddb
+  Remove entries from the database of card label and serial number
+  information. This database is used to maintain the identity of cards as
+  they are moved around in the system from slot to slot. Cards are
+  initially populated automatically into this database.
+
+
+label
+  Remove the specified card label. The associated card can no longer be
+  referenced with this label.
+
+
+<label>
+  Supplies the name of the label to be removed.
+
+
+serial
+  Remove card information of the specified card.
+
+
+<serial-no>
+  Supplies the serial number of the card to be removed.
+}
+####################################################################################################
+set {CLI(help remove carddb label)} {
+SYNTAX
+    remove carddb label <label>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+label
+  Remove the specified card label. The associated card can no longer be
+  referenced with this label.
+
+
+<label>
+  Supplies the name of the label to be removed.
+}
+####################################################################################################
+set {CLI(help remove carddb label <label>)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+label
+  Supplies the name of the label to be removed.
+}
+####################################################################################################
+set {CLI(help remove carddb serial)} {
+SYNTAX
+    remove carddb serial <serial-no>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+serial
+  Remove card information of the specified card.
+
+
+<serial-no>
+  Supplies the serial number of the card to be removed.
+}
+####################################################################################################
+set {CLI(help remove carddb serial 7APC-000228)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+*APC-*
+  Supplies the serial number of the card to be removed.
+}
+####################################################################################################
+set {CLI(help remove carddb serial 7NPC-000240)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+*NPC-*
+  Supplies the serial number of the card to be removed.
+}
+####################################################################################################
+set {CLI(help remove crashdump)} {
+SYNTAX
+    remove crashdump <CPU> <dump-file>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+crashdump
+  Remove a crash dump file. This can be used to reclaim some space on the
+  system.
+
+
+<CPU>
+  Specifies either 'all' or a specific CPU where the crash dump file is
+  stored. If a specific CPU, this is the CPU which experienced the crash.
+
+
+<dump-file>
+  Specifies the name of the crash dump file.
+}
+####################################################################################################
+set {CLI(help remove crashdump all)} {
+SYNTAX
+    remove crashdump all <dump-file>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+all
+  Specifies either 'all' or a specific CPU where the crash dump file is
+  stored. If a specific CPU, this is the CPU which experienced the crash.
+
+
+<dump-file>
+  Specifies the name of the crash dump file.
+}
+####################################################################################################
+set {CLI(help remove crashdump all all)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+all
+  Specifies the name of the crash dump file.
+}
+####################################################################################################
+set {CLI(help remove file)} {
+SYNTAX
+    remove file <file-name>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+file
+  Remove files from the system file transfer directory. (Refer to import
+  and export command
+
+
+<file-name>
+  Supplies name of the file to be removed. This name is the name of a file
+  within the system file transfer directory.
+}
+####################################################################################################
+set {CLI(help remove file <file-name>)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+file-name
+  Supplies name of the file to be removed. This name is the name of a file
+  within the system file transfer directory.
+}
+####################################################################################################
+set {CLI(help remove software)} {
+SYNTAX
+    remove software local-distribution-partition
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+software
+
+local-distribution-partition
+}
+####################################################################################################
+set {CLI(help remove software local-distribution-partition)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+local-distribution-partition
+}
+####################################################################################################
+set {CLI(help remove user)} {
+SYNTAX
+    remove user <user-name>
+
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+user
+  Removes the specified Bivio CLI user (account) from the system. The user
+  is prompted to confirm the removal.
+
+
+<user-name>
+  Supplies the name of the user to remove. An error message will be
+  generated if the user does not exist or if the supplied username is root
+  or admin. The assigned role is not affected by the removal.
+}
+####################################################################################################
+set {CLI(help remove user admin)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+admin
+  Supplies the name of the user to remove. An error message will be
+  generated if the user does not exist or if the supplied username is root
+  or admin. The assigned role is not affected by the removal.
+}
+####################################################################################################
+set {CLI(help remove user root)} {
+EXAMPLE
+    
+    
+    
+    remove user fred
+    
+
+
+root
+  Supplies the name of the user to remove. An error message will be
+  generated if the user does not exist or if the supplied username is root
+  or admin. The assigned role is not affected by the removal.
+}
+####################################################################################################
+set {CLI(help reset)} {
+NAME
+    reset
+
+DESCRIPTION
+    The reset command is used to reset information to the default or
+    unconfigured settings.
+
+SYNTAX
+    reset user-failures <user-name>
+    reset user-failures all
+    reset carddb
+
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+ARGUMENTS
+===== reset user-failures =====
+
+    user-failures
+      Reset the active count of user login failures to zero, so that the
+      user is allowed to log in again.
+
+
+    <user-name>
+      Resets the active count of login failures for the specified user.
+
+
+    all
+      Resets the active count of login failures for all users on the
+      system.
+
+===== reset carddb =====
+
+    carddb
+      Reset the database of card information. All items will be removed.
+      The system must immediately be rebooted after performing this
+      command.
+}
+####################################################################################################
+set {CLI(help reset carddb)} {
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+
+
+carddb
+  Reset the database of card information. All items will be removed. The
+  system must immediately be rebooted after performing this command.
+}
+####################################################################################################
+set {CLI(help reset user-failures)} {
+SYNTAX
+    reset user-failures <user-name>
+    reset user-failures all
+
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+
+
+user-failures
+  Reset the active count of user login failures to zero, so that the user
+  is allowed to log in again.
+
+
+<user-name>
+  Resets the active count of login failures for the specified user.
+
+
+all
+  Resets the active count of login failures for all users on the system.
+}
+####################################################################################################
+set {CLI(help reset user-failures admin)} {
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+
+
+admin
+  Resets the active count of login failures for the specified user.
+}
+####################################################################################################
+set {CLI(help reset user-failures all)} {
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+
+
+all
+  Resets the active count of login failures for all users on the system.
+}
+####################################################################################################
+set {CLI(help reset user-failures root)} {
+EXAMPLE
+    
+    
+    
+    reset user-failures barney
+    
+
+
+root
+  Resets the active count of login failures for the specified user.
+}
+####################################################################################################
+set {CLI(help set)} {
+NAME
+    set
+
+DESCRIPTION
+    The set command is used to set system parameters. The first argument
+    usually specifies a general type of thing being configured. The
+    following arguments are used to specify attributes and their values.
+
+SYNTAX
+    set user <user-name> failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user <user-name> failure-limit none
+    set user <user-name> password
+    set user all failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user all failure-limit none
+    set user root failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user root failure-limit none
+    set user root password
+    set app <app-name> autostart off
+    set app <app-name> autostart on
+    set carddb serial <serial-no> label <label>
+    set date <date>
+    set domain name <domain-name>
+    set env <env-name> <env-value>
+    set loglevel critical
+    set loglevel debug
+    set loglevel error
+    set loglevel fatal
+    set loglevel info
+    set loglevel notice
+    set loglevel warning
+    set session timeout <idle-timeout> [<warning-timeout>]
+    set software server name <software-server-name>
+    set software server path <software-server-path>
+    set software server type ftp
+    set software server type http
+    set software server type nfs
+    set software server user <software-server-user>
+    set stacking cpu-count <default>
+    set status-led active alarms
+    set status-led unacknowledged alarms
+    set sysname <system-name>
+    set terminal paging off
+    set terminal paging on
+    set time <time>
+    set timezone
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+ARGUMENTS
+===== set user =====
+
+    user
+      Sets user properties.
+
+
+    <user-name>
+      Configures account properties for the specified user. This must be
+      one of the Bivio CLI usernames (either the built-in admin or one
+      added by add user).
+
+
+    failure-limit
+      Number of login failures that will be allowed before disabling the
+      specified user account. Re-enabling is then controlled by the
+      restore-time parameter.
+
+
+    <no-of-failures>
+      Supplies an integer greater than zero for the number of allowed login
+      failures.
+
+
+    restore-time
+      Length of time to wait before re-enabling a disabled user account.
+      (The reset user command can be used to re-enable on a one-time
+      basis.)
+
+
+    <restore-time-in-seconds>
+      Gives number of seconds to wait before re-enabling. Zero indicates
+      never to re-enable the account.
+
+
+    none
+      Specifies to disable login failure processing for this user. Any
+      number of login failures will be allowed.
+
+
+    password
+      Sets the CLI password for the specified user. If the current user
+      (login) is an admin user, then any user password except the root
+      password may be set without knowing the previous password. Otherwise,
+      the previous password must first be given.
+
+
+    all
+      Configures account properties for all users.
+
+
+    failure-limit
+      Number of login failures that will be allowed before disabling the
+      specified user account. Re-enabling is then controlled by the
+      restore-time parameter.
+
+
+    <no-of-failures>
+      Supplies an integer greater than zero for the number of allowed login
+      failures.
+
+
+    restore-time
+      Length of time to wait before re-enabling a disabled user account.
+      (The reset user command can be used to re-enable on a one-time
+      basis.)
+
+
+    <restore-time-in-seconds>
+      Gives number of seconds to wait before re-enabling. Zero indicates
+      never to re-enable the account.
+
+
+    none
+      Specifies to disable login failure processing for this user. Any
+      number of login failures will be allowed.
+
+
+    root
+      Configures account properties for the root user (super-user).
+
+
+    failure-limit
+      Number of login failures that will be allowed before disabling the
+      specified user account. Re-enabling is then controlled by the
+      restore-time parameter.
+
+
+    <no-of-failures>
+      Supplies an integer greater than zero for the number of allowed login
+      failures.
+
+
+    restore-time
+      Length of time to wait before re-enabling a disabled user account.
+      (The reset user command can be used to re-enable on a one-time
+      basis.)
+
+
+    <restore-time-in-seconds>
+      Gives number of seconds to wait before re-enabling. Zero indicates
+      never to re-enable the account.
+
+
+    none
+      Specifies to disable login failure processing for this user. Any
+      number of login failures will be allowed.
+
+
+    password
+      Sets the CLI password for the root user. Only an admin user can do
+      this.
+
+===== set app =====
+
+    app
+      Set parameters for application start, etc.
+
+
+    <app-name>
+      Supplies the name of the application.
+
+
+    autostart
+      Sets whether application is automatically started up at system boot.
+
+
+    off
+      Specifies not to automatically start the application at system boot.
+
+
+    on
+      Specifies to automatically start the application at system boot.
+
+===== set carddb =====
+
+    carddb
+      Change items within the database of card information. This database
+      is used to maintain the identity of cards as they are moved around in
+      the system from slot to slot. Cards are initially populated
+      automatically into this database.
+
+
+    serial
+      Set properties of the card with the given serial number.
+
+
+    <serial-no>
+      Supplies the serial number of the card whose properties are to be
+      set.
+
+
+    label
+      Assign a user-readable label to the card.
+
+
+    <label>
+      Supplies the label.
+
+===== set date =====
+
+    date
+      Set the system date and hardware clock date.
+
+      Example:
+        
+        set date */*/*
+
+    <date>
+      Date in the format MM/DD/YYYY. See examples below.
+
+===== set domain =====
+
+    domain
+      Sets the system domain name.
+
+
+    name
+      Used to specify a domain name.
+
+
+    <domain-name>
+      The new domain name.
+
+===== set env =====
+
+    env
+      To set environment variables the command set env can be used.
+      Environment variables are used in the shell to hold temporary values
+      or to influence certain behaviors of the shell (such as the verbosity
+      of logging, etc.).
+      
+      Environment variables can be used together with other commands as
+      well using the dollar ($) operator. An expression like $name as
+      argument of any command will be substituted by the value of the
+      variable name when the command is executed. If this variable is not
+      defined, an error will be detected.
+      
+      To set an environment variable to a certain value, both the name of
+      the variable and the value must be specified.
+      
+
+
+    <env-name>
+      Name of environment variable to set or display.
+
+
+    <env-value>
+      Value to assign to specified environment variable.
+
+===== set loglevel =====
+
+    loglevel
+      Set the verbosity of messages the shell writes to the system log
+      file. With this command you set the bottom threshold of messages
+      written. All messages on the specified level and above will be
+      logged. Seven loglevels are available as listed below.
+      
+      The system log file can be viewed using show system log.
+
+
+    critical
+      Critical errors. Critical errors terminate the shell, but leave the
+      system in a well-defined state.
+
+
+    debug
+      Very verbose logging of everything that is occurring. Useful only for
+      low level debugging and programming.
+
+
+    error
+      General errors. These are errors mostly caused by incorrect user
+      input. The shell will print an error message and continue to run.
+
+
+    fatal
+      Fatal errors. Fatal errors are non recoverable, terminate the shell
+      and may leave the system in an undefined state.
+
+
+    info
+      Like notice but more verbose. Lower level functions are logged as
+      well.
+
+
+    notice
+      Messages about tasks being performed by the shell.
+
+
+    warning
+      Warning messages. General warnings about invalid input and similar
+      user errors.
+
+===== set session =====
+
+    session
+      Sets general session (e.g. CLI login) properties.
+
+
+    timeout
+      Sets the session "idle" and "warning" timeouts.
+
+
+    <idle-timeout>
+      Number of minutes a user is allowed to be idle before being logged
+      out; zero indicates to disable the timeout. Default is two hours.
+
+
+    <warning-timeout>
+      Number of minutes warning before being logged out; default is *
+      minutes.
+
+===== set software =====
+
+    software
+      Configures software install-related settings.
+
+
+    server
+      Used to specify the name or IP address of the software server. To
+      perform software updates or more generally change the Bivio system's
+      software installation, a server providing software packages needs to
+      be specified.
+      
+      This can be an NFS or FTP server. It is recommended to use an NFS
+      server, but FTP works as well. Along with the name or IP address of
+      the server, the path where the Bivio Networks software distribution
+      can be found on the server is needed. In case FTP is used as
+      transport protocol, a user name to log into the FTP server is also
+      required. The FTP password for this user will be requested at the
+      time a connection to the server is made.
+
+      Example:
+        
+        bivio-*[admin:] >set software server name *.*.*.*
+        bivio-*[admin:] >set software server path /export/pmacg*/Install
+        bivio-*[admin:] >set software server type ftp                   
+        bivio-*[admin:] >set software server user bb 
+        bivio-*[admin:] >show software server
+        
+        Software Server Settings:
+        
+        Name : *.*.*.*
+        Path : /export/pmacg*/Install
+        Type : ftp
+        User : bb
+        
+
+    name
+      Supplies the name or IP address of the software server.
+
+
+    <software-server-name>
+      Name or IP address.
+
+
+    path
+      Specify the path on the server where the Bivio software is located.
+
+
+    <software-server-path>
+      Path to the Bivio Networks software distribution.
+
+
+    type
+      Specify the server type.
+
+
+    ftp
+      Use FTP to access server.
+
+
+    http
+      Use HTTP to access server.
+
+
+    nfs
+      Use NFS to access server.
+
+
+    user
+      Specify the login name used to access the FTP server.
+
+
+    <software-server-user>
+      The login name.
+
+===== set stacking =====
+
+    stacking
+
+    cpu-count
+
+    __DYN__
+===== set status-led =====
+
+    status-led
+      Used to configure status LED. The status LED can be configured to
+      blink on either active alarms or unacknowledged alarms.
+
+
+    active
+      Used to specify if status LED should blink on active alarms.
+
+
+    alarms
+      Blink the status LED when active alarms are present.
+
+
+    unacknowledged
+      Used to specify if status LED should blink on unacknowledged alarms.
+
+
+    alarms
+      Blink the status LED when unacknowledged alarms are present.
+
+===== set sysname =====
+
+    sysname
+      Sets the new system hostname of the specified XPC.
+
+
+    <system-name>
+      Supplies a hostname.
+
+===== set terminal =====
+
+    terminal
+      Change terminal settings.
+
+
+    paging
+      Sets terminal paging properties. By default the shell will page
+      output as soon as a single block of output would scroll off the
+      screen otherwise.
+      This command allows you to change this behavior. You can turn paging
+      on and off to fit your personal preference.
+
+
+    off
+      Turn terminal paging off.
+
+
+    on
+      Turn terminal paging on (the default).
+
+===== set time =====
+
+    time
+      Set the system time and hardware clock time.
+
+      Example:
+        
+        set time *:*:*
+        
+
+    <time>
+      Time in the format HH:MM[:SS]. See examples below.
+
+===== set timezone =====
+
+    timezone
+      Set system time zone. This command asks the user for information
+      about the current location, and sets the time zone based on that
+      information. Note that some applications may require restarting in
+      order for the time zone change to take effect.
+      A screen is brought up which offers the most popular time zones. If
+      your zone does not appear there, you can choose the "other" option
+      and make a selection from any of the standardized time zones around
+      the world.
+
+      Example:
+        
+        set timezone
+}
+####################################################################################################
+set {CLI(help set app)} {
+SYNTAX
+    set app <app-name> autostart off
+    set app <app-name> autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+app
+  Set parameters for application start, etc.
+
+
+<app-name>
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app bvcigmgr)} {
+SYNTAX
+    set app bvcigmgr autostart off
+    set app bvcigmgr autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+bvcigmgr
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app bvcigmgr autostart)} {
+SYNTAX
+    set app bvcigmgr autostart off
+    set app bvcigmgr autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app bvcigmgr autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app bvcigmgr autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app cdbserver)} {
+SYNTAX
+    set app cdbserver autostart off
+    set app cdbserver autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+cdbserver
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app cdbserver autostart)} {
+SYNTAX
+    set app cdbserver autostart off
+    set app cdbserver autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app cdbserver autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app cdbserver autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app confsrv)} {
+SYNTAX
+    set app confsrv autostart off
+    set app confsrv autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+confsrv
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app confsrv autostart)} {
+SYNTAX
+    set app confsrv autostart off
+    set app confsrv autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app confsrv autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app confsrv autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app flop_agent)} {
+SYNTAX
+    set app flop_agent autostart off
+    set app flop_agent autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+flop_agent
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app flop_agent autostart)} {
+SYNTAX
+    set app flop_agent autostart off
+    set app flop_agent autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app flop_agent autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app flop_agent autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app log_receiver)} {
+SYNTAX
+    set app log_receiver autostart off
+    set app log_receiver autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+log_receiver
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app log_receiver autostart)} {
+SYNTAX
+    set app log_receiver autostart off
+    set app log_receiver autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app log_receiver autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app log_receiver autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app nct)} {
+SYNTAX
+    set app nct autostart off
+    set app nct autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+nct
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app nct autostart)} {
+SYNTAX
+    set app nct autostart off
+    set app nct autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app nct autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app nct autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app pos-start)} {
+SYNTAX
+    set app pos-start autostart off
+    set app pos-start autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+pos-start
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app pos-start autostart)} {
+SYNTAX
+    set app pos-start autostart off
+    set app pos-start autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app pos-start autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app pos-start autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app poscard)} {
+SYNTAX
+    set app poscard autostart off
+    set app poscard autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+poscard
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app poscard autostart)} {
+SYNTAX
+    set app poscard autostart off
+    set app poscard autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app poscard autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app poscard autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app qos)} {
+SYNTAX
+    set app qos autostart off
+    set app qos autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+qos
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app qos autostart)} {
+SYNTAX
+    set app qos autostart off
+    set app qos autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app qos autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app qos autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app sysmgt)} {
+SYNTAX
+    set app sysmgt autostart off
+    set app sysmgt autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+sysmgt
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app sysmgt autostart)} {
+SYNTAX
+    set app sysmgt autostart off
+    set app sysmgt autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app sysmgt autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app sysmgt autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app testapp)} {
+SYNTAX
+    set app testapp autostart off
+    set app testapp autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+testapp
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app testapp autostart)} {
+SYNTAX
+    set app testapp autostart off
+    set app testapp autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app testapp autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app testapp autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app wisp_srv)} {
+SYNTAX
+    set app wisp_srv autostart off
+    set app wisp_srv autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+wisp_srv
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app wisp_srv autostart)} {
+SYNTAX
+    set app wisp_srv autostart off
+    set app wisp_srv autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app wisp_srv autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app wisp_srv autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app zbridgeapp)} {
+SYNTAX
+    set app zbridgeapp autostart off
+    set app zbridgeapp autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+zbridgeapp
+  Supplies the name of the application.
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app zbridgeapp autostart)} {
+SYNTAX
+    set app zbridgeapp autostart off
+    set app zbridgeapp autostart on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+autostart
+  Sets whether application is automatically started up at system boot.
+
+
+off
+  Specifies not to automatically start the application at system boot.
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app zbridgeapp autostart off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Specifies not to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set app zbridgeapp autostart on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Specifies to automatically start the application at system boot.
+}
+####################################################################################################
+set {CLI(help set carddb)} {
+SYNTAX
+    set carddb serial <serial-no> label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+carddb
+  Change items within the database of card information. This database is
+  used to maintain the identity of cards as they are moved around in the
+  system from slot to slot. Cards are initially populated automatically
+  into this database.
+
+
+serial
+  Set properties of the card with the given serial number.
+
+
+<serial-no>
+  Supplies the serial number of the card whose properties are to be set.
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial)} {
+SYNTAX
+    set carddb serial <serial-no> label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+serial
+  Set properties of the card with the given serial number.
+
+
+<serial-no>
+  Supplies the serial number of the card whose properties are to be set.
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7APC-000228)} {
+SYNTAX
+    set carddb serial *APC-* label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+*APC-*
+  Supplies the serial number of the card whose properties are to be set.
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7APC-000228 label)} {
+SYNTAX
+    set carddb serial *APC-* label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7APC-000228 label <label>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+label
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7NPC-000240)} {
+SYNTAX
+    set carddb serial *NPC-* label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+*NPC-*
+  Supplies the serial number of the card whose properties are to be set.
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7NPC-000240 label)} {
+SYNTAX
+    set carddb serial *NPC-* label <label>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+label
+  Assign a user-readable label to the card.
+
+
+<label>
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set carddb serial 7NPC-000240 label <label>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+label
+  Supplies the label.
+}
+####################################################################################################
+set {CLI(help set date)} {
+SYNTAX
+    set date <date>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+date
+  Set the system date and hardware clock date.
+
+  Example:
+    
+    set date */*/*
+
+<date>
+  Date in the format MM/DD/YYYY. See examples below.
+}
+####################################################################################################
+set {CLI(help set date <date>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+date
+  Date in the format MM/DD/YYYY. See examples below.
+}
+####################################################################################################
+set {CLI(help set domain)} {
+SYNTAX
+    set domain name <domain-name>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+domain
+  Sets the system domain name.
+
+
+name
+  Used to specify a domain name.
+
+
+<domain-name>
+  The new domain name.
+}
+####################################################################################################
+set {CLI(help set domain name)} {
+SYNTAX
+    set domain name <domain-name>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+name
+  Used to specify a domain name.
+
+
+<domain-name>
+  The new domain name.
+}
+####################################################################################################
+set {CLI(help set domain name <domain-name>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+domain-name
+  The new domain name.
+}
+####################################################################################################
+set {CLI(help set env)} {
+SYNTAX
+    set env <env-name> <env-value>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+env
+  To set environment variables the command set env can be used. Environment
+  variables are used in the shell to hold temporary values or to influence
+  certain behaviors of the shell (such as the verbosity of logging, etc.).
+
+  Environment variables can be used together with other commands as well
+  using the dollar ($) operator. An expression like $name as argument of
+  any command will be substituted by the value of the variable name when
+  the command is executed. If this variable is not defined, an error will
+  be detected.
+  
+  To set an environment variable to a certain value, both the name of the
+  variable and the value must be specified.
+  
+
+
+<env-name>
+  Name of environment variable to set or display.
+
+
+<env-value>
+  Value to assign to specified environment variable.
+}
+####################################################################################################
+set {CLI(help set env <env-name>)} {
+SYNTAX
+    set env env-name <env-value>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+env-name
+  Name of environment variable to set or display.
+
+
+<env-value>
+  Value to assign to specified environment variable.
+}
+####################################################################################################
+set {CLI(help set env <env-name> <env-value>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+env-value
+  Value to assign to specified environment variable.
+}
+####################################################################################################
+set {CLI(help set loglevel)} {
+SYNTAX
+    set loglevel critical
+    set loglevel debug
+    set loglevel error
+    set loglevel fatal
+    set loglevel info
+    set loglevel notice
+    set loglevel warning
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+loglevel
+  Set the verbosity of messages the shell writes to the system log file.
+  With this command you set the bottom threshold of messages written. All
+  messages on the specified level and above will be logged. Seven loglevels
+  are available as listed below.
+  
+  The system log file can be viewed using show system log.
+
+
+critical
+  Critical errors. Critical errors terminate the shell, but leave the
+  system in a well-defined state.
+
+
+debug
+  Very verbose logging of everything that is occurring. Useful only for low
+  level debugging and programming.
+
+
+error
+  General errors. These are errors mostly caused by incorrect user input.
+  The shell will print an error message and continue to run.
+
+
+fatal
+  Fatal errors. Fatal errors are non recoverable, terminate the shell and
+  may leave the system in an undefined state.
+
+
+info
+  Like notice but more verbose. Lower level functions are logged as well.
+
+
+notice
+  Messages about tasks being performed by the shell.
+
+
+warning
+  Warning messages. General warnings about invalid input and similar user
+  errors.
+}
+####################################################################################################
+set {CLI(help set loglevel critical)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+critical
+  Critical errors. Critical errors terminate the shell, but leave the
+  system in a well-defined state.
+}
+####################################################################################################
+set {CLI(help set loglevel debug)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+debug
+  Very verbose logging of everything that is occurring. Useful only for low
+  level debugging and programming.
+}
+####################################################################################################
+set {CLI(help set loglevel error)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+error
+  General errors. These are errors mostly caused by incorrect user input.
+  The shell will print an error message and continue to run.
+}
+####################################################################################################
+set {CLI(help set loglevel fatal)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+fatal
+  Fatal errors. Fatal errors are non recoverable, terminate the shell and
+  may leave the system in an undefined state.
+}
+####################################################################################################
+set {CLI(help set loglevel info)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+info
+  Like notice but more verbose. Lower level functions are logged as well.
+}
+####################################################################################################
+set {CLI(help set loglevel notice)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+notice
+  Messages about tasks being performed by the shell.
+}
+####################################################################################################
+set {CLI(help set loglevel warning)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+warning
+  Warning messages. General warnings about invalid input and similar user
+  errors.
+}
+####################################################################################################
+set {CLI(help set session)} {
+SYNTAX
+    set session timeout <idle-timeout> [<warning-timeout>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+session
+  Sets general session (e.g. CLI login) properties.
+
+
+timeout
+  Sets the session "idle" and "warning" timeouts.
+
+
+<idle-timeout>
+  Number of minutes a user is allowed to be idle before being logged out;
+  zero indicates to disable the timeout. Default is two hours.
+
+
+<warning-timeout>
+  Number of minutes warning before being logged out; default is * minutes.
+}
+####################################################################################################
+set {CLI(help set session timeout)} {
+SYNTAX
+    set session timeout <idle-timeout> [<warning-timeout>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+timeout
+  Sets the session "idle" and "warning" timeouts.
+
+
+<idle-timeout>
+  Number of minutes a user is allowed to be idle before being logged out;
+  zero indicates to disable the timeout. Default is two hours.
+
+
+<warning-timeout>
+  Number of minutes warning before being logged out; default is * minutes.
+}
+####################################################################################################
+set {CLI(help set session timeout <idle-timeout>)} {
+SYNTAX
+    set session timeout idle-timeout [<warning-timeout>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+idle-timeout
+  Number of minutes a user is allowed to be idle before being logged out;
+  zero indicates to disable the timeout. Default is two hours.
+
+
+<warning-timeout>
+  Number of minutes warning before being logged out; default is * minutes.
+}
+####################################################################################################
+set {CLI(help set session timeout <idle-timeout> <warning-timeout>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+warning-timeout
+  Number of minutes warning before being logged out; default is * minutes.
+}
+####################################################################################################
+set {CLI(help set software)} {
+SYNTAX
+    set software server name <software-server-name>
+    set software server path <software-server-path>
+    set software server type ftp
+    set software server type http
+    set software server type nfs
+    set software server user <software-server-user>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+software
+  Configures software install-related settings.
+
+
+server
+  Used to specify the name or IP address of the software server. To perform
+  software updates or more generally change the Bivio system's software
+  installation, a server providing software packages needs to be specified.
+
+  This can be an NFS or FTP server. It is recommended to use an NFS server,
+  but FTP works as well. Along with the name or IP address of the server,
+  the path where the Bivio Networks software distribution can be found on
+  the server is needed. In case FTP is used as transport protocol, a user
+  name to log into the FTP server is also required. The FTP password for
+  this user will be requested at the time a connection to the server is
+  made.
+
+  Example:
+    
+    bivio-*[admin:] >set software server name *.*.*.*
+    bivio-*[admin:] >set software server path /export/pmacg*/Install
+    bivio-*[admin:] >set software server type ftp                   
+    bivio-*[admin:] >set software server user bb 
+    bivio-*[admin:] >show software server
+    
+    Software Server Settings:
+    
+    Name : *.*.*.*
+    Path : /export/pmacg*/Install
+    Type : ftp
+    User : bb
+    
+
+name
+  Supplies the name or IP address of the software server.
+
+
+<software-server-name>
+  Name or IP address.
+
+
+path
+  Specify the path on the server where the Bivio software is located.
+
+
+<software-server-path>
+  Path to the Bivio Networks software distribution.
+
+
+type
+  Specify the server type.
+
+
+ftp
+  Use FTP to access server.
+
+
+http
+  Use HTTP to access server.
+
+
+nfs
+  Use NFS to access server.
+
+
+user
+  Specify the login name used to access the FTP server.
+
+
+<software-server-user>
+  The login name.
+}
+####################################################################################################
+set {CLI(help set software server)} {
+SYNTAX
+    set software server name <software-server-name>
+    set software server path <software-server-path>
+    set software server type ftp
+    set software server type http
+    set software server type nfs
+    set software server user <software-server-user>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+server
+  Used to specify the name or IP address of the software server. To perform
+  software updates or more generally change the Bivio system's software
+  installation, a server providing software packages needs to be specified.
+
+  This can be an NFS or FTP server. It is recommended to use an NFS server,
+  but FTP works as well. Along with the name or IP address of the server,
+  the path where the Bivio Networks software distribution can be found on
+  the server is needed. In case FTP is used as transport protocol, a user
+  name to log into the FTP server is also required. The FTP password for
+  this user will be requested at the time a connection to the server is
+  made.
+
+  Example:
+    
+    bivio-*[admin:] >set software server name *.*.*.*
+    bivio-*[admin:] >set software server path /export/pmacg*/Install
+    bivio-*[admin:] >set software server type ftp                   
+    bivio-*[admin:] >set software server user bb 
+    bivio-*[admin:] >show software server
+    
+    Software Server Settings:
+    
+    Name : *.*.*.*
+    Path : /export/pmacg*/Install
+    Type : ftp
+    User : bb
+    
+
+name
+  Supplies the name or IP address of the software server.
+
+
+<software-server-name>
+  Name or IP address.
+
+
+path
+  Specify the path on the server where the Bivio software is located.
+
+
+<software-server-path>
+  Path to the Bivio Networks software distribution.
+
+
+type
+  Specify the server type.
+
+
+ftp
+  Use FTP to access server.
+
+
+http
+  Use HTTP to access server.
+
+
+nfs
+  Use NFS to access server.
+
+
+user
+  Specify the login name used to access the FTP server.
+
+
+<software-server-user>
+  The login name.
+}
+####################################################################################################
+set {CLI(help set software server name)} {
+SYNTAX
+    set software server name <software-server-name>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+name
+  Supplies the name or IP address of the software server.
+
+
+<software-server-name>
+  Name or IP address.
+}
+####################################################################################################
+set {CLI(help set software server name <software-server-name>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+software-server-name
+  Name or IP address.
+}
+####################################################################################################
+set {CLI(help set software server path)} {
+SYNTAX
+    set software server path <software-server-path>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+path
+  Specify the path on the server where the Bivio software is located.
+
+
+<software-server-path>
+  Path to the Bivio Networks software distribution.
+}
+####################################################################################################
+set {CLI(help set software server path <software-server-path>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+software-server-path
+  Path to the Bivio Networks software distribution.
+}
+####################################################################################################
+set {CLI(help set software server type)} {
+SYNTAX
+    set software server type ftp
+    set software server type http
+    set software server type nfs
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+type
+  Specify the server type.
+
+
+ftp
+  Use FTP to access server.
+
+
+http
+  Use HTTP to access server.
+
+
+nfs
+  Use NFS to access server.
+}
+####################################################################################################
+set {CLI(help set software server type ftp)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+ftp
+  Use FTP to access server.
+}
+####################################################################################################
+set {CLI(help set software server type http)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+http
+  Use HTTP to access server.
+}
+####################################################################################################
+set {CLI(help set software server type nfs)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+nfs
+  Use NFS to access server.
+}
+####################################################################################################
+set {CLI(help set software server user)} {
+SYNTAX
+    set software server user <software-server-user>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+user
+  Specify the login name used to access the FTP server.
+
+
+<software-server-user>
+  The login name.
+}
+####################################################################################################
+set {CLI(help set software server user <software-server-user>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+software-server-user
+  The login name.
+}
+####################################################################################################
+set {CLI(help set stacking)} {
+SYNTAX
+    set stacking cpu-count <default>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+stacking
+
+cpu-count
+
+__DYN__
+}
+####################################################################################################
+set {CLI(help set stacking cpu-count)} {
+SYNTAX
+    set stacking cpu-count <default>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+cpu-count
+
+__DYN__
+}
+####################################################################################################
+set {CLI(help set stacking cpu-count <default>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+default
+}
+####################################################################################################
+set {CLI(help set status-led)} {
+SYNTAX
+    set status-led active alarms
+    set status-led unacknowledged alarms
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+status-led
+  Used to configure status LED. The status LED can be configured to blink
+  on either active alarms or unacknowledged alarms.
+
+
+active
+  Used to specify if status LED should blink on active alarms.
+
+
+alarms
+  Blink the status LED when active alarms are present.
+
+
+unacknowledged
+  Used to specify if status LED should blink on unacknowledged alarms.
+
+
+alarms
+  Blink the status LED when unacknowledged alarms are present.
+}
+####################################################################################################
+set {CLI(help set status-led active)} {
+SYNTAX
+    set status-led active alarms
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+active
+  Used to specify if status LED should blink on active alarms.
+
+
+alarms
+  Blink the status LED when active alarms are present.
+}
+####################################################################################################
+set {CLI(help set status-led active alarms)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+alarms
+  Blink the status LED when active alarms are present.
+}
+####################################################################################################
+set {CLI(help set status-led unacknowledged)} {
+SYNTAX
+    set status-led unacknowledged alarms
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+unacknowledged
+  Used to specify if status LED should blink on unacknowledged alarms.
+
+
+alarms
+  Blink the status LED when unacknowledged alarms are present.
+}
+####################################################################################################
+set {CLI(help set status-led unacknowledged alarms)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+alarms
+  Blink the status LED when unacknowledged alarms are present.
+}
+####################################################################################################
+set {CLI(help set sysname)} {
+SYNTAX
+    set sysname <system-name>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+sysname
+  Sets the new system hostname of the specified XPC.
+
+
+<system-name>
+  Supplies a hostname.
+}
+####################################################################################################
+set {CLI(help set sysname <system-name>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+system-name
+  Supplies a hostname.
+}
+####################################################################################################
+set {CLI(help set terminal)} {
+SYNTAX
+    set terminal paging off
+    set terminal paging on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+terminal
+  Change terminal settings.
+
+
+paging
+  Sets terminal paging properties. By default the shell will page output as
+  soon as a single block of output would scroll off the screen otherwise.
+  This command allows you to change this behavior. You can turn paging on
+  and off to fit your personal preference.
+
+
+off
+  Turn terminal paging off.
+
+
+on
+  Turn terminal paging on (the default).
+}
+####################################################################################################
+set {CLI(help set terminal paging)} {
+SYNTAX
+    set terminal paging off
+    set terminal paging on
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+paging
+  Sets terminal paging properties. By default the shell will page output as
+  soon as a single block of output would scroll off the screen otherwise.
+  This command allows you to change this behavior. You can turn paging on
+  and off to fit your personal preference.
+
+
+off
+  Turn terminal paging off.
+
+
+on
+  Turn terminal paging on (the default).
+}
+####################################################################################################
+set {CLI(help set terminal paging off)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+off
+  Turn terminal paging off.
+}
+####################################################################################################
+set {CLI(help set terminal paging on)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+on
+  Turn terminal paging on (the default).
+}
+####################################################################################################
+set {CLI(help set time)} {
+SYNTAX
+    set time <time>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+time
+  Set the system time and hardware clock time.
+
+  Example:
+    
+    set time *:*:*
+    
+
+<time>
+  Time in the format HH:MM[:SS]. See examples below.
+}
+####################################################################################################
+set {CLI(help set time <time>)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+time
+  Time in the format HH:MM[:SS]. See examples below.
+}
+####################################################################################################
+set {CLI(help set timezone)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+timezone
+  Set system time zone. This command asks the user for information about
+  the current location, and sets the time zone based on that information.
+  Note that some applications may require restarting in order for the time
+  zone change to take effect.
+  A screen is brought up which offers the most popular time zones. If your
+  zone does not appear there, you can choose the "other" option and make a
+  selection from any of the standardized time zones around the world.
+
+  Example:
+    
+    set timezone
+}
+####################################################################################################
+set {CLI(help set user)} {
+SYNTAX
+    set user <user-name> failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user <user-name> failure-limit none
+    set user <user-name> password
+    set user all failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user all failure-limit none
+    set user root failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user root failure-limit none
+    set user root password
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+user
+  Sets user properties.
+
+
+<user-name>
+  Configures account properties for the specified user. This must be one of
+  the Bivio CLI usernames (either the built-in admin or one added by add
+  user).
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+
+
+password
+  Sets the CLI password for the specified user. If the current user (login)
+  is an admin user, then any user password except the root password may be
+  set without knowing the previous password. Otherwise, the previous
+  password must first be given.
+
+
+all
+  Configures account properties for all users.
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+
+
+root
+  Configures account properties for the root user (super-user).
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+
+
+password
+  Sets the CLI password for the root user. Only an admin user can do this.
+}
+####################################################################################################
+set {CLI(help set user admin)} {
+SYNTAX
+    set user admin failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user admin failure-limit none
+    set user admin password
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+admin
+  Configures account properties for the specified user. This must be one of
+  the Bivio CLI usernames (either the built-in admin or one added by add
+  user).
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+
+
+password
+  Sets the CLI password for the specified user. If the current user (login)
+  is an admin user, then any user password except the root password may be
+  set without knowing the previous password. Otherwise, the previous
+  password must first be given.
+}
+####################################################################################################
+set {CLI(help set user admin failure-limit)} {
+SYNTAX
+    set user admin failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user admin failure-limit none
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user admin failure-limit <no-of-failures>)} {
+SYNTAX
+    set user admin failure-limit no-of-failures [restore-time <restore-time-in-seconds>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+no-of-failures
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user admin failure-limit <no-of-failures> restore-time)} {
+SYNTAX
+    set user admin failure-limit no-of-failures restore-time <restore-time-in-seconds>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user admin failure-limit none)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user admin password)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+password
+  Sets the CLI password for the specified user. If the current user (login)
+  is an admin user, then any user password except the root password may be
+  set without knowing the previous password. Otherwise, the previous
+  password must first be given.
+}
+####################################################################################################
+set {CLI(help set user all)} {
+SYNTAX
+    set user all failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user all failure-limit none
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+all
+  Configures account properties for all users.
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user all failure-limit)} {
+SYNTAX
+    set user all failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user all failure-limit none
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user all failure-limit <no-of-failures>)} {
+SYNTAX
+    set user all failure-limit no-of-failures [restore-time <restore-time-in-seconds>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+no-of-failures
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user all failure-limit <no-of-failures> restore-time)} {
+SYNTAX
+    set user all failure-limit no-of-failures restore-time <restore-time-in-seconds>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user all failure-limit none)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user root)} {
+SYNTAX
+    set user root failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user root failure-limit none
+    set user root password
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+root
+  Configures account properties for the root user (super-user).
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+
+
+password
+  Sets the CLI password for the root user. Only an admin user can do this.
+}
+####################################################################################################
+set {CLI(help set user root failure-limit)} {
+SYNTAX
+    set user root failure-limit <no-of-failures> [restore-time <restore-time-in-seconds>]
+    set user root failure-limit none
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+failure-limit
+  Number of login failures that will be allowed before disabling the
+  specified user account. Re-enabling is then controlled by the
+  restore-time parameter.
+
+
+<no-of-failures>
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user root failure-limit <no-of-failures>)} {
+SYNTAX
+    set user root failure-limit no-of-failures [restore-time <restore-time-in-seconds>]
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+no-of-failures
+  Supplies an integer greater than zero for the number of allowed login
+  failures.
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user root failure-limit <no-of-failures> restore-time)} {
+SYNTAX
+    set user root failure-limit no-of-failures restore-time <restore-time-in-seconds>
+
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+restore-time
+  Length of time to wait before re-enabling a disabled user account. (The
+  reset user command can be used to re-enable on a one-time basis.)
+
+
+<restore-time-in-seconds>
+  Gives number of seconds to wait before re-enabling. Zero indicates never
+  to re-enable the account.
+}
+####################################################################################################
+set {CLI(help set user root failure-limit none)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+none
+  Specifies to disable login failure processing for this user. Any number
+  of login failures will be allowed.
+}
+####################################################################################################
+set {CLI(help set user root password)} {
+EXAMPLE
+    
+    
+    
+    set user fred password
+    
+
+
+password
+  Sets the CLI password for the root user. Only an admin user can do this.
+}

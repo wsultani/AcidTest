@@ -1,0 +1,138 @@
+#!/usr/bin/expect --
+
+proc NCCS_CLI_DEBUG {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)   {Test the "debug" cmd under the "enable" mode. Execute the cmd including all sub cmds and check to see if the content of the output matches the reference data}
+set ${p}(Suite)		{nccs_cli}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{nccs sys_info}
+set ${p}(Created)	{11-04-06}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set group "debug"
+    set sid $::sid($::nccs)
+
+    set send_human {.1 .3 1 .05 2}
+
+    # get the BTC input array.
+    upvar marray marr
+    upvar bv bvarr
+
+    # create the sys info string. 
+    set fmt {%-15s : %-20s}
+    set gout ""
+    foreach line [lsort [array names ::sys_info]] {
+        append gout "[format $fmt "$line" $::sys_info($line)]\n"
+    }
+
+    set ref_data "tests/nccs/$marr(-testbed)_[namespace tail [lindex [info level 0] 0]].data"
+
+    if { ![file exists $ref_data] } {
+
+        set fd [open "$ref_data" a+]
+        puts $fd [string repeat "#" 100]
+        puts $fd "set \{CLI\(Header\)\} \{\n[string trim $gout]\n\}"
+        close $fd
+
+        # set the box to the correct mode
+        set ret [$::nccs nccs_change_user enable "" {#}]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        write_step "Generating CLI reference data for $group"
+        set ret [$::nccs nccs_generate_cli_data $group "$ref_data" full]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    set ret [$::nccs nccs_change_user enable "" {#}]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    source $ref_data
+    set replace {[<>\s=\[\]\\]}
+
+    # Source the ignore list, which contains the list of cmds to ignore.
+    set ifile "[file join [file dirname $ref_data] "ignore.data"]"
+    source "$ifile"
+
+    # check the header and make sure they match.
+    set pat [regsub -all $replace $CLI(Header) ""]
+    set data [regsub -all $replace $gout ""]
+    if { [string match "*$pat*" $data] == "0"} {
+        write_warning "Testbed configuration mismatch - Expected:\n$CLI(Header)\nGot:\n$gout"
+        #return [list false $gout]
+    } else {
+        write_info "Testbed configuration ok"
+    }
+
+    foreach cmd [array names CLI] {
+
+        # do not compare the Header info.
+        if { $cmd == "Header" } {
+            continue
+        }
+
+        if { [lsearch $ignore "$cmd"] >= 0 } {
+            write_info "Ignoring command: $cmd"
+            continue
+        }
+
+        start_subtest "$cmd"
+
+        write_step "Testing CLI $cmd"
+        set cmd $cmd
+
+        set spawn_id $sid
+
+        exp_send -h "\003"
+        flush_exp_buffer $spawn_id
+
+        match_max 1000000
+        exp_send -h "$cmd ?"
+        expect -re "$cmd\\s+\?(.*)$::prompt($::nccs)"
+
+        set ret "$expect_out(1,string)"
+        match_max -d
+
+        set pat [regsub -all $replace $CLI($cmd) ""]
+        set data [regsub -all $replace $ret ""]
+
+        if { [string match "*$pat*" $data] == "0"} {
+
+            # narrow down the mismatch to line, and tag line with >>>>>.
+            set fmt {%-8s %-s}
+            set nout ""
+            foreach a [split $CLI($cmd) "\n"] b [split $ret "\n"] {
+                set a1 [regsub -all $replace $a ""]
+                set b1 [regsub -all $replace $b ""]
+                if { [string match "*$a1*" $b1] == "0"} {
+                    append nout [format $fmt ">>>>>" "$b\n"]
+                } else {
+                    append nout [format $fmt "" "$b\n"]
+                }
+            }
+            write_error "cli ($cmd) output is incorrect:\nExpected:\n$CLI($cmd)\nGot:\n$nout"
+            end_subtest [list false $ret]
+            continue
+        }
+        write_step "CLI ($cmd) output is correct"
+        write_info "Expected:\n$CLI($cmd)"
+        write_info "Got:\n$ret"
+        end_subtest [list true ""]
+    }
+
+    return [analyze_subtest]
+}
+# this is required for auto loading
+package provide NCCS_CLI_DEBUG 1.0

@@ -1,0 +1,237 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000229         
+APC1            : 13                  
+APC1ROM         : 2.45s               
+APCCount        : 1                   
+BackPlane0      : 11                  
+Build           : 5.0.7-3 NCCS 1.3.2-0.201102281621 FC5 ZCP System
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45s               
+NPC0Serial      : 7NPC-000568         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45s/2.45s         
+Shell           : Bivio CLI           
+Slot0           : 12-port Harrier 10/100/1000 Card
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(no)} {
+?
+  configuration  Remove configuration file residing in the system
+  core           Remove application core dump
+  debug          Remove debug info file
+  log            Remove application log
+  mgt            Remove auditing management log
+
+[D
+}
+####################################################################################################
+set {CLI(no configuration)} {
+?
+                <No configuration file to delete>
+  all           all files
+  provisioning  Remove provisioning configuration file
+
+[D
+}
+####################################################################################################
+set {CLI(no configuration all)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no configuration provisioning)} {
+?
+    <No provisioning file to delete>
+
+[D
+}
+####################################################################################################
+set {CLI(no core)} {
+?
+       <No core files to delete>
+  all  all files
+
+[D
+}
+####################################################################################################
+set {CLI(no core all)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no debug)} {
+?
+       <No debug file to delete>
+  all  all files
+
+[D
+}
+####################################################################################################
+set {CLI(no debug all)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log)} {
+?
+  all                          all files
+  associatorFile.fs.log        log to delete
+  cacheStatFile.fs.log         log to delete
+  classifierFile.fs.log        log to delete
+  cpuInfoFile.fs.log           log to delete
+  dbupdate.log                 log to delete
+  dnsServerFile.fs.log         log to delete
+  dnsTrafficFile.fs.log        log to delete
+  nccslogFile.fs.log           log to delete
+  nctStatFile.fs.log           log to delete
+  sesmonFile.fs.log            log to delete
+  systemInfoFile.fs.log        log to delete
+  tunnelSesmonFile.fs.log      log to delete
+  urlfilterDBAgentFile.fs.log  log to delete
+  urlfilterFile.fs.log         log to delete
+  urlfilterStatsFile.fs.log    log to delete
+  voipFile.fs.log              log to delete
+
+[D
+}
+####################################################################################################
+set {CLI(no log all)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log associatorFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log cacheStatFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log classifierFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log cpuInfoFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log dbupdate.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log dnsServerFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log dnsTrafficFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log nccslogFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log nctStatFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log sesmonFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log systemInfoFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log tunnelSesmonFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log urlfilterDBAgentFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log urlfilterFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log urlfilterStatsFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no log voipFile.fs.log)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(no mgt)} {
+?
+    <No log file to delete>
+
+[D
+}

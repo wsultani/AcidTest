@@ -1,0 +1,311 @@
+#!/usr/bin/expect --
+
+proc SYS_ROUTED_ICMP_PING {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{test the routed mode by pinging between bivio and 2 pc on two different networks.}
+set ${p}(Suite)		{system}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut sw0 pc0 pc1}
+set ${p}(Created)	{09-11-19}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+    set pc0_sid $::sid($::pc0)
+    set pc1_sid $::sid($::pc1)
+
+    set src_pc(obj) "$::pc0"
+    set src_pc(int) "eth1"
+    set src_pc(ip) "10.10.1.2"
+    set src_pc(sid) "$pc0_sid"
+    set src_pc(port) "17"
+    set src_pc(bcast) "10.10.1.255"
+    set src_pc(mask) "255.255.255.0"
+    set src_pc(net) [regsub {.\d+$} $src_pc(ip) {.0}]
+
+    set dst_pc(obj) "$::pc1"
+    set dst_pc(int) "eth1"
+    set dst_pc(ip) "172.16.1.2"
+    set dst_pc(sid) "$pc1_sid"
+    set dst_pc(port) "18"
+    set dst_pc(bcast) "172.16.1.255"
+    set dst_pc(mask) "255.255.255.0"
+    set dst_pc(net) [regsub {.\d+$} $dst_pc(ip) {.0}]
+
+    set slot 0
+
+    set mapping routed
+    set dut_ingress "10.10.1.24"
+    set dut_egress "172.16.1.24"
+    set dut_ingress_mask "10.10.1.X"
+    set dut_egress_mask "172.16.1.X"
+
+    write_step "Set up $::dut mapping to $mapping"
+    set ret [set_cig_map $mapping]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Configuring $src_pc(obj) interface $src_pc(int) to $src_pc(ip)"
+    set ret [$src_pc(obj) pc_config_int $src_pc(int) $src_pc(ip) $src_pc(mask) $src_pc(bcast)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Configuring $dst_pc(obj) interface $dst_pc(int) to $dst_pc(ip)"
+    set ret [$dst_pc(obj) pc_config_int $dst_pc(int) $dst_pc(ip) $dst_pc(mask) $dst_pc(bcast)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::dut bivio_io_ports $slot]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach line [split [string trim [data_from $ret]] "\n"] {
+        if { ![regexp {Port\s+(\d+),} $line match max_port] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # for each port pair
+    for {set port 0} {$port <= $max_port} {incr port 2} {
+
+        # start a subtest
+        start_subtest "PORTPAIR-$port-[expr $port + 1]" 
+
+        set bv_in $port 
+        set bv_out [expr $port + 1] 
+
+        set sw_in [expr $bv_in + 1]
+        set sw_out [expr $bv_out + 1]
+
+        set ret [fill_ip $dut_ingress $dut_ingress_mask]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        set dut_ingress [data_from $ret]
+
+        set ret [fill_ip $dut_egress $dut_egress_mask]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        set dut_egress [data_from $ret]
+
+        # delete any existing vlans.
+        set ret [$::sw sw_config {vlan database} "no vlan 100-101"]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        # configure vlans on switch, configure pc1(g17) on port 1
+        set ret [$::sw sw_config_vlan 100 "$sw_in $src_pc(port)"]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        # configure vlans on switch, configure pc2(g18) on port 2
+        set ret [$::sw sw_config_vlan 101 "$sw_out $dst_pc(port)"]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        # turn off all ports on the default vlan
+        set ret [$::sw sw_toggle_interface vlan 1 off]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Setting bivio interface ip to 0.0.0.0"
+        set clicmd "bivio-ifconfig -a s inet 0.0.0.0 up"
+        set exp "Interface configuration applied and saved.*$::prompt($::dut)"
+        set ret [send_expect_pair $dut_sid $clicmd $exp "" 2 10]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Configuring port s0.e$bv_in on $::dut to $dut_ingress"
+        set cmd "bivio-ifconfig s0.e$bv_in inet $dut_ingress netmask $src_pc(mask) broadcast $src_pc(bcast) up"
+        set exp "Interface configuration applied and saved"
+
+        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Configuring port s0.e$bv_out on $::dut to $dut_egress"
+        set cmd "bivio-ifconfig s0.e$bv_out inet $dut_egress netmask $dst_pc(mask) broadcast $dst_pc(bcast) up"
+        set exp "Interface configuration applied and saved"
+
+        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Configuring loadshare on $::dut" 
+        set cmd "nrsp loadshare all on"
+        set exp "$::prompt($::dut)"
+
+        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "deleting any existing routes to $dst_pc(net) on $::pc0"
+        set ret [linux_route_del_all $pc0_sid $dst_pc(net) $dst_pc(mask) $::prompt($::pc0)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "configuring route to $dst_pc(net) on $::pc0"
+        set ret [linux_edit_route $pc0_sid add $dst_pc(net) $dst_pc(mask) $dut_ingress 1 $::prompt($::pc0)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "deleting any existing routes to $src_pc(net) on $::pc0"
+        set ret [linux_route_del_all $pc1_sid $src_pc(net) $src_pc(mask) $::prompt($::pc1)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "configuring route to $src_pc(net) on $::pc1"
+        set ret [linux_edit_route $pc1_sid add $src_pc(net) $src_pc(mask) $dut_egress 1 $::prompt($::pc1)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        # Configure the dut for routed mode.
+        write_step "Enabling routed mode on $::dut"
+        set ret [$::dut bivio_set_routed_mode all 1]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        write_step "Pinging from $src_pc(obj)\($src_pc(ip)\) to $::dut\($dut_ingress\)"
+        set ret [linux_ping $::sid($::pc0) $dut_ingress 10 $::prompt($::pc0)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Pinging from $::dut\($dut_ingress\) to $src_pc(obj)\($src_pc(ip)\)"
+        set ret [linux_ping $::sid($::dut) $src_pc(ip) 10 $::prompt($::dut)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Pinging from $src_pc(obj)\($src_pc(ip)\) to $dst_pc(obj)\($dst_pc(ip)\)"
+        set ret [linux_ping $::sid($::pc0) $dst_pc(ip) 10 $::prompt($::pc0)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Pinging from $dst_pc(obj)\($dst_pc(ip)\) to $::dut\($dut_egress\)"
+        set ret [linux_ping $::sid($::pc1) $dut_egress 10 $::prompt($::pc1)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Pinging from $::dut\($dut_egress\) to $dst_pc(obj)\($dst_pc(ip)\)"
+        set ret [linux_ping $::sid($::dut) $dst_pc(ip) 10 $::prompt($::dut)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        write_step "Pinging from $dst_pc(obj)\($dst_pc(ip)\) to $src_pc(obj)\($src_pc(ip)\)"
+        set ret [linux_ping $::sid($::pc1) $src_pc(ip) 10 $::prompt($::pc1)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+            continue
+        }
+
+        end_subtest [list true [data_from $ret]]
+    }
+
+    set ret [analyze_subtest]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # reset system back to know state
+    write_step "Loading default_config"
+    set ret [default_config]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "deleting any existing routes to $dst_pc(net) on $::pc0"
+    set ret [linux_route_del_all $pc0_sid $dst_pc(net) $dst_pc(mask) $::prompt($::pc0)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "deleting any existing routes to $src_pc(net) on $::pc1"
+    set ret [linux_route_del_all $pc1_sid $src_pc(net) $src_pc(mask) $::prompt($::pc1)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+# this is required for auto loading
+package provide SYS_ROUTED_ICMP_PING 1.0

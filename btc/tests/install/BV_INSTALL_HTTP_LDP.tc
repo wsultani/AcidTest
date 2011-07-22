@@ -1,0 +1,66 @@
+#!/usr/bin/expect --
+
+proc BV_INSTALL_HTTP_LDP {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Reinstalls the bivio build with HTTP and LDP enabled}
+set ${p}(Suite)		{install}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-06-10}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    # get the arguments array to BTC.
+    upvar marray argar
+
+    # set the boot type
+    set btype tftp
+
+    # set the install type
+    set instype http
+
+    # set the single file install option
+    set sfi no
+
+    # set the local distribution partition
+    set ldp yes
+
+    if { ![info exists argar(-build)] } {
+        set msg "Build not defined, test cannot continue without build info"
+        write_error "$msg"
+        return [list false $msg]
+    } else {
+        set build $argar(-build)
+    }
+
+    package require install_build
+
+    foreach dut [info globals {dut[0-9]*}] {
+        # set script to install from ldp
+        set instldp no
+
+        set ldut [set ::$dut]
+        set ret [install_build $ldut $build $btype $instype $sfi $ldp $instldp]
+        if { [problem_with $ret] } {
+            write_error "failed to load build $build - [data_from $ret]"
+            return $ret
+        }
+
+        # set script to install from ldp
+        set instldp yes
+
+        set ret [install_build $ldut $build $btype $instype $sfi $ldp $instldp]
+        if { [problem_with $ret] } {
+            write_error "failed to load build $build - [data_from $ret]"
+            return $ret
+        }
+    }
+
+    return $ret
+}
+package provide BV_INSTALL_HTTP_LDP 1.0

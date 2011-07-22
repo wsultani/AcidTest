@@ -1,0 +1,110 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #7: Multiple Traffic Sets">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <!-- For Traffic Set 'lab' -->
+      <CIG:Interface name="s0.e0" type="transparent">s0.e1</CIG:Interface>
+      <CIG:Interface name="s0.e1" type="transparent">s0.e0</CIG:Interface>
+
+      <!-- For Traffic Set 'mfg' -->
+      <CIG:Interface name="s0.e2" type="transparent">s0.e3</CIG:Interface>
+      <CIG:Interface name="s0.e3" type="transparent">s0.e2</CIG:Interface>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- First inspection group for lab net -->
+   <CIG:InspectionGroup name="lab-ig1">
+      <CIG:Cpus from="apc" failstate="open">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+   <!-- Second inspection group for lab net -->
+   <CIG:InspectionGroup name="lab-ig2">
+      <CIG:Cpus from="apc" failstate="closed">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+   <!-- mfg net inspection group -->
+   <CIG:InspectionGroup name="mfg-ig">
+      <CIG:Cpus from="apc" failstate="redistribute">2</CIG:Cpus>
+      <CIG:Require failstate="open">2</CIG:Require>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for lab interfaces -->
+   <CIG:TrafficSet name="lab">
+      <CIG:Input>
+         <!-- Interface(s) this ruleset is assigned to -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+         <CIG:Interface>s0.e1</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="lab-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+         <CIG:Action type="load-balance">lab-ig1</CIG:Action>
+         <CIG:Action type="load-balance">lab-ig2</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- Errored packets traffic class -->
+      <CIG:TrafficClass name="lab-errors">
+         <CIG:Classification>ERR_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="lab-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+   <!-- Traffic Set for mfg interfaces -->
+   <CIG:TrafficSet name="mfg">
+      <CIG:Input>
+         <!-- Interface(s) this ruleset is assigned to -->
+         <CIG:Interface>s0.e2</CIG:Interface>
+         <CIG:Interface>s0.e3</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="mfg-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="broadcast">mfg-ig</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- ARP traffic class -->
+      <CIG:TrafficClass name="mfg-arp">
+         <CIG:Classification>ETH_ARP_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- IPv6 traffic class -->
+      <CIG:TrafficClass name="mfg-IPv6">
+         <CIG:Classification>IPV6_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="mfg-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

@@ -1,0 +1,37 @@
+=========================================
+Ztcpdump for the Bivio 7000 Series  
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+Ztcpdump is Tcpdump linked against the zero copy 
+library. The only reason for calling the application
+Ztcpdump is because the default Tcpdump also resides on
+the system. 
+
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+1. rpm -Uvh ztcpdump-4.0.0-1.B7000.ppc.rpm
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start Ztcpdump running on the application CPU's
+
+        nrsp start ztcpdump
+
+
+

@@ -1,0 +1,72 @@
+=========================================
+Barnyard For The Bivio 7500
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+Barnyard is an output spool reader for SNORT 
+This program decouples output overhead from the Snort network intrusion
+detection system and allows Snort to run at full speed. It takes input
+and output plugins and can therefore be used to convert almost any spooled file.
+
+Snort is a registered trademark of Sourcefire, Inc
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+On the Bivio system, Barnyard is designed to run on CPU-X only so that
+all application CPU's can run at their maximum potential for processing
+traffic.
+
+The barnyard application profile calls a barnyard wrapper script.
+This script determines the number of APC's on the system and starts
+up a barnyard process for each one. Each barnyard process uses the shared
+directoy for its respective cpu and looks for a directory called snort which
+contains unified snort alert files.
+
+The wrapper script /etc/init.d/barnyardctl has 2 settings that may be changed by the
+user but in most cases the default should be appropriate:
+
+CONF_FILE - This sets the location to the barnyard configuration file.
+            This files is shared among all barnyard processes.
+
+BASE_FILE - This sets the base file name for reading Snort unified files.
+            This is set to the default file, created in the snort.conf.
+
+
+When a stop is issued the wrapper shuts down all running barnyard processes.
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+1. Install the Barnyard RPM
+
+    rpm -Uvh barnyard-0.2.0-1.ppc.rpm
+
+2. Install Barnyard to run permenantly
+    
+    appinst -i barnyard
+
+-----------------------------------------
+Configuration 
+-----------------------------------------
+
+1. The Barnyard configuration file can now be edited for desired runtime behavior and options
+
+        vi /etc/barnyard/barnyard.conf
+
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start Barnyard on CPU-x
+
+        nrsp start barnyard
+

@@ -1,0 +1,63 @@
+#!/usr/bin/expect --
+
+proc CIG_EX11_PREDEFINED_ACTION_GRPS {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Tests (1) a user-defined action group which consists of copying onto 2 IGs, and (2) LB with 3 CPUs per IG. This is example #11 in /etc/bivio/bvcig/examples which is a variation of example#5.}
+set ${p}(Suite)		{cig}
+set ${p}(Comments)	{}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{10-01-05}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require cigprocs
+
+    set cfgarr(cfg) zbridgeapp
+    set cfgarr(rpmlst) ""
+    set cfgarr(mbps) 200
+    set cfgarr(pkt_count) 1000
+    set cfgarr(pcaplst) {"ether_128B_IPV4_UDP_1burst1000.pcap"}
+
+    # define testcase xml 
+    set srcdir "automation/btc/tests/cig/xml"
+    set srcfile "bvcig-eg11.xml"
+    set cfgarr(testcase_xml) [file join $srcdir $srcfile]
+    set cfgarr(mode) "" 
+
+    # define array for comparison vs. cpu stats
+    set ig_core_count 3
+    set packet_count_percore [expr {$cfgarr(pkt_count) / $ig_core_count}]
+    set coreideal(rx_tolerance) 3
+    set coreideal(cpu-1c0_rx) $packet_count_percore 
+    set coreideal(cpu-1c1_rx) $packet_count_percore
+    set coreideal(cpu-2c0_rx) $packet_count_percore
+    set coreideal(cpu-2c1_rx) $packet_count_percore
+    set coreideal(cpu-3c0_rx) $packet_count_percore
+    set coreideal(cpu-3c1_rx) $packet_count_percore
+    set coreideal(total_rx) [expr $cfgarr(pkt_count) * 2] 
+    set coreideal(tx_tolerance) 3
+    set coreideal(cpu-1c0_tx) $packet_count_percore
+    set coreideal(cpu-1c1_tx) $packet_count_percore
+    set coreideal(cpu-2c0_tx) $packet_count_percore
+    set coreideal(cpu-2c1_tx) $packet_count_percore
+    set coreideal(cpu-3c0_tx) $packet_count_percore
+    set coreideal(cpu-3c1_tx) $packet_count_percore
+    set coreideal(total_tx) [expr $cfgarr(pkt_count) * 2] 
+
+    # define array for comparison vs. xlr stats
+    set ingress s0.e0
+    set egress s0.e1
+    set ideal($ingress\_rx) $cfgarr(pkt_count) 
+    set ideal($egress\_tx) [expr {2 * $cfgarr(pkt_count)}] 
+    set ideal(stack_rx) [expr $ideal($ingress\_rx) + $ideal($egress\_tx)]
+
+    cigreturn [cig_shared_code]
+}
+
+# this is required for auto loading
+package provide CIG_EX11_PREDEFINED_ACTION_GRPS 1.0

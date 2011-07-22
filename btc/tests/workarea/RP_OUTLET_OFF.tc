@@ -1,0 +1,42 @@
+#!/usr/bin/expect --
+
+proc RP_OUTLET_OFF {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{use the remote power and reset the dut, then check to see if it cam up ok.}
+set ${p}(Suite)		{Reboot}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-04-04}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sid $::sid($::dut)
+
+    set outlet {5 6}
+
+    write_step "Resetting outlet $outlet"
+    set ret [$::rpower rpower_reset_outlet $outlet]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Check to see if bivio came up ok"
+    set bv_cmd {}
+    set exp "ogin:"
+    set ret [send_expect_pair $sid $bv_cmd $exp "" 15 20] 
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide RP_OUTLET_OFF 1.0

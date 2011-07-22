@@ -1,0 +1,60 @@
+#!/usr/bin/expect --
+
+proc CLI_SHOW_001 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{perform a <show help> on current mode on device, then change mode to admin and then perform a <show version>.}
+set ${p}(Suite)		{CLI}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-03-12}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    # send cli commands to dut object
+    foreach clicmd {"help"} {
+        write_step "sending cli \"$clicmd\" to $::dut"
+        #set ret [$::dut send_cli $clicmd]
+        set ret [send_expect_pair $sid $clicmd $prompt $prompt 3 3]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+	    return [list false [data_from $ret]]
+        }
+        write_output [data_from $ret]
+    }
+
+    write_step "changing user to admin"
+    set ret [$::dut bivio_change_user admin root {\[admin:\]>}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+	return [list false [data_from $ret]]
+    }
+    write_output [data_from $ret]
+
+    write_step "getting bivio version"
+    set ret [$::dut bivio_show_version]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+	return [list false [data_from $ret]]
+    }
+    write_output [data_from $ret]
+
+    set prompt {\[admin:\]>}
+    set bv_cmd "show version"
+    set ret [send_expect_pair $sid $bv_cmd $prompt $prompt 3 3]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+	return [list false [data_from $ret]]
+    }
+    write_output [data_from $ret]
+    return [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide CLI_SHOW_001 1.0

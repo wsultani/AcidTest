@@ -1,0 +1,312 @@
+proc run_url_tcl { testdir trafficsrc } {
+
+    set sid $::sid($::stcserver)
+
+    set cmd "cd $testdir"
+    set exp ""
+
+    set ret [send_expect_pair $sid $cmd $exp "$::prompt($::stcserver)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }    
+
+    switch $trafficsrc {
+
+        "avalanche" {
+
+            set testfile "test.tcl"
+
+            set cmd "/usr/local/stc/active8.4.19/bin/tclsh $testfile"
+            set exp "Done!"
+
+            set ret [send_expect_pair $sid $cmd $exp "" 40 5 "" noresend]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            } 
+        }
+
+        "pc" {
+
+            #set pcint [$::pc cget -interface]
+            set pcint "eth2"
+
+            set ret [$::pc pc_curl_fetch_header "$pcint" "cnn.com"]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+            
+            set fd [open [file join "$testdir" "nccs_curl_results"] w]
+    
+            foreach line [split [data_from $ret] "\n"] {
+
+                if [regexp {(\S+):?(.*)} $line match key val] {
+                    set crarr($key) [string trim $val]
+                    lappend header $key
+                    lappend vals [string trim $val]
+                }
+            }
+
+            # create a csv results file similar to avalanche.
+            # so we can use the same oparsing logic for both
+            puts $fd [join $header ","] 
+            puts $fd [join $vals ","]
+            close $fd
+        }
+    }
+
+    #if {[regexp -nocase "error|fail" [data_from $ret] match]} {
+    #    write_error "Error detected while running $testfile - [data_from $ret]"
+    #    return [list false [data_from $ret]]
+    #}
+
+    return [list true [data_from $ret]]
+}
+
+proc nccs_core { cfgarr } {
+
+    # configure interfaces
+    set cmd "bivio-ifconfig -a s inet 0.0.0.0 up; bivio-ifconfig map --defaults"
+    set exp "Auto Acception"
+    set ret [send_expect_pair $::sid($::dut) $cmd $exp "$::prompt($::dut)" 3 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+    
+    upvar $cfgarr tccfg
+
+    set factory $tccfg(factory)
+    set db $tccfg(db)
+    set query $tccfg(query)
+    set log $tccfg(log)
+    set action $tccfg(action)
+    set urlfilter $tccfg(urlfilter)
+    set aclno $tccfg(aclno)
+    set aclaction $tccfg(aclaction)
+    set aclproto $tccfg(aclproto)
+    set globalprofile $tccfg(globalprofile)
+    set globalcatlist $tccfg(globalcatlist)
+    set globalrespid $tccfg(globalrespid)
+    set profilerespid $tccfg(profilerespid)
+    set profiletmplid $tccfg(profiletmplid)
+    #set trafficsrc $tccfg(trafficsrc)
+    set trafficsrc "avalanche"
+
+    if { $factory == 1 } {
+        write_step "Resetting system back to factory defaults"
+        set ret [nccs_factory_reset $::nccs]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { $db != "" && $query != "" } {
+        write_step "Configuring database $db"
+        set ret [$::nccs nccs_config_db $db]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        write_step "Performing db query for $query"
+        set ret [$::nccs nccs_db_query "$query"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { $log != "" && $action != "" } {
+        write_step "Configuring the config log $log to $action"
+        set ret [$::nccs nccs_config_log "$log" $action]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { $urlfilter != "" } {
+        write_step "Configuring url filtering to $urlfilter"
+        set ret [$::nccs nccs_config_url_filter $urlfilter]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { $aclno != "" && $aclaction != "" && $aclproto != "" } {
+        write_step "Configuring acl to "
+        set ret [$::nccs nccs_config_acl $aclno $aclaction $aclproto]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { $globalprofile != "" } {
+        write_step "Configuring the global profile to $globalprofile"
+        set ret [$::nccs nccs_config_global_profile $globalprofile $globalcatlist $globalrespid]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    if { [info exists profilerespid] && $profilerespid != "" } {
+        write_step "Configuring the url profile template for $profilerespid to $profiletmplid"
+        set ret [$::nccs nccs_config_url_profile_tmpl "$profilerespid" "$profiletmplid"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    set logfile "/usr/log/urlfilterFile.fs.log"
+    set dutip [$::dut cget -ip_add]
+
+    set ver [data_from [$::dut bivio_show_version]]
+
+    set email "automation@bivio.net"
+    set subject "NCCS - [lindex $ver 0]"
+
+    # save the location of the current working dir
+    set restore [pwd]
+
+    # set the timestamp
+    set date [clock format [clock seconds] -format %Y%m%d]
+    set tstamp [clock format [clock seconds] -format %H%M%S]
+
+    set testdir [file join "$::stc(dir)" "$date-$tstamp"]
+
+    write_step "creating test dir $testdir"
+    # Need to make a tmp dir. The stc file will run from here.
+    set ret [mk_dir "$testdir"]
+    if { [problem_with $ret] } {
+        write_error "Unable to make dir $testdir - [data_from $ret]"
+        return $ret
+    }
+
+    # copy STC test dir to testdir
+
+    set stcdir $db
+
+    write_step "copying $stcdir to $testdir"
+    set ret [copy_file [file join "$restore" "tests" "nccs" "$stcdir"] $testdir]
+    if { [problem_with $ret] } {
+        return [list false "$err"]
+    }
+
+    set testdir [file join "$testdir" "$stcdir"]
+    #set tclfile [file join $testdir test.tcl]
+
+    write_step "clearing nccs logfile - [file tail $logfile]"
+    set cmd "no log [file tail $logfile]"
+    set exp "$::prompt($::nccs)"
+
+    set ret [send_expect_pair $::sid($::nccs) $cmd $exp "$::prompt($::nccs)" 2 2]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Running NCCS test from $trafficsrc"
+    set ret [run_url_tcl $testdir $trafficsrc ]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    set src "root@$dutip:$logfile"
+    set dst $testdir
+
+    write_step "SCP file $src to $dst"
+    set ret [$::stcserver pc_scp_file "$src" "$dst" root]
+    if { [problem_with $ret] } {
+        write_error "Failed to scp $src to $dst" 
+        return $ret 
+    }
+
+    # delete testdir
+    #set ret [delete_file [file dirname $testdir]]
+    #if { [problem_with $ret] } {
+    #    write_warning "Unable to delete [file dirname $testdir]"
+    #}
+
+    # change back to original dir
+    if { [catch "cd $restore" err] } {
+        write_error "could not cd to $restore - $err"
+    }
+
+    return [list true "$testdir"]
+}
+
+proc nccs_compare_results { testarr testdir } {
+
+    upvar $testarr tarr
+
+    # search the nccs log for category
+    set nccsf $tarr(key)
+    set nccsv $tarr(value)
+    set nccslog [file join $testdir "urlfilterFile.fs.log"]
+
+    array set nccsarr ""
+
+    write_step "searching \"$nccslog\" for \"$nccsf\" as \"$nccsv\""
+    set ret [$::nccs nccs_fetch_from_bvlog $nccslog nccsarr $nccsf $nccsv]
+    if { [problem_with $ret] } {
+        write_error "Could not fetch $nccsf as $nccsv from $nccslog"
+        return $ret
+    }
+    
+    write_step "checking if action_type for \"$nccsf\" as \"$nccsv\" is \"$tarr(action_type)\""
+    # check the action type for the category.
+    if { $nccsarr(action_type) != $tarr(action_type) } {
+        write_error "Expected action for $tarr(key) $nccsv is $tarr(action_type) got $nccsarr(action_type)"
+        return [list false ""]
+    }
+
+    # search the avalanche log for url
+    set avf {Url}
+    set avv [file join [string trim "$nccsarr(hostname)" "/"] [string trim "$nccsarr(url)" "/"]]
+    set avlog [file join $testdir [file tail $testdir] "results" "merged" "client" "summary.csv"]
+
+    array set avarr ""
+
+    write_step "searching avalanche file \"$avlog\" for \"$avf\" as \"$avv\""
+    set ret [$::nccs nccs_fetch_from_stclog $avlog avarr $avf $avv]
+    if { [problem_with $ret] } {
+        write_error "Could not fetch $avf as $avv from $avlog"
+        return $ret
+    }
+
+    set fmt {%-20s %-20s %-20s %-20s}
+    set summary "[string repeat "#" 80]\n"
+    append summary "URL: $avv\n"
+    append summary "[string repeat "-" 80]\n"
+    append summary "[format $fmt "BV category" "NCCS Action" "Avalanche Action" "Avalanche code"]\n"
+    append summary "[string repeat "-" 80]\n"
+
+    foreach avval $tarr(avalance_response) {
+        set av_responce "[lindex $avval 0]"
+        set av_val "[lindex $avval 1]"
+        write_step "checking if avalanche \"$av_responce\" is set to $av_val"
+
+        # check the avalanche responce code for url
+        if { $avarr($av_responce) != $av_val } {
+            write_error "Expected avalance responce for $av_responce is $av_val got $avarr($av_responce)"
+            return [list false ""]
+        }
+        append summary "[format $fmt "$nccsarr(category)" "$nccsarr(action_type)" "$av_responce" "$avarr($av_responce)"]\n"
+    }
+
+    append summary "[string repeat "#" 80]\n"
+
+    write_step "\n$summary\n"
+
+    return [list true ""]
+}
+
+package provide stc_avalanche 1.0

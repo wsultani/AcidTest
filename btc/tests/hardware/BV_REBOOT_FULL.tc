@@ -1,0 +1,119 @@
+#!/usr/bin/expect --
+
+proc BV_REBOOT_FULL {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Do a full reboot of the bivio device to login prompt}
+set ${p}(Suite)		{hardware}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-12}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    # time to wait after the reboot before checking alarms (in seconds).
+    set waittime 60
+
+    # set the reference build.
+    set rbuild 5.0.5.1
+
+    # oem-opt option removed as of build 5.0.5.1c.`
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "$rbuild"]
+    if { [problem_with $ret] } {
+        # pre build 
+        write_debug "$cbuild not greater than $rbuild - Check system mode"
+        set chkmode true
+    } else {
+        # post build
+        write_debug "$cbuild greater than $rbuild - Do not check system mode"
+        set chkmode false
+    }
+
+    if { $chkmode } {
+        write_step "Get current system mode."
+        set ret [$::dut bivio_get_oemopt_mode]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+        set mode_orig [data_from $ret]
+    }
+
+    write_step "changing user to root"
+    set ret [$::dut bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # check to see if the system reported any alarms.
+    write_step "Checking for alarms on $::dut"
+    set ret [$::dut bivio_check_alarms all]
+    if { [problem_with $ret] } {
+        # write warning and clear alarms
+        write_warning "Alarm found - [data_from $ret]"
+        set cmd "nrsp -e ack all"
+        set exp "All unacknowledged alarms have now been acknowledged"
+        set ret [send_expect_pair $sid $cmd $exp $prompt 2 5]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+        write_info "Alarms acknowledged"
+    }
+
+    write_step "Rebooting System $::dut ...."
+    set ret [$::dut bivio_reboot normal]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    if { $chkmode } {
+        write_step "Checking system mode."
+        set ret [$::dut bivio_get_oemopt_mode]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { ![string match [data_from $ret] $mode_orig] } {
+            write_error "Mode mismatch after reboot; expected $mode_orig got [data_from $ret]"
+            return [list false [data_from $ret]]
+        }
+        write_debug "Mode match successful; expected $mode_orig got [data_from $ret]"
+    }
+
+    write_step "Waiting $waittime sec ..."
+    sleep $waittime
+
+    # check to see if the system reported any alarms.
+    set ret [$::dut bivio_check_alarms all]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Checking cpu states"
+    for {set i 0} {$i < 5} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            sleep 30
+            continue
+        } else {
+            return [list true [data_from $ret]]
+        }
+    }
+
+    return [list false [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide BV_REBOOT_FULL 1.0

@@ -1,0 +1,108 @@
+#!/usr/bin/expect --
+
+proc NCCS_URL_ESOFT_DEFAULT_FORWARD_PC {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {testcase}
+set ${p}(Description)   {test all available categories with default profile config and make sure all categories are forwarded with correct action id in the log files.}
+set ${p}(Suite)         {nccs_esoft}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {dut nccs stcserver}
+set ${p}(Created)       {11-04-07}
+set ${p}(EOL)           {}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    ###########################################################
+    # User defined values
+    ###########################################################
+
+    # set the configuration array
+    set tcfg(factory) 1
+    set tcfg(db) esoft
+    set tcfg(query) "www.cnn.com"
+    set tcfg(log) "Forward Redirect Drop Reject"
+    set tcfg(action) 1
+    set tcfg(urlfilter) yes
+    set tcfg(aclno) 10
+    set tcfg(aclaction) "aclActionUrlfilter" 
+    set tcfg(aclproto) "http"
+
+    set tcfg(globalprofile) "default"
+    set tcfg(globalcatlist) "10-150"
+    set tcfg(globalrespid) "0"
+    set tcfg(profilerespid) "0--1"
+    set tcfg(profiletmplid) "0"
+
+    #set tcfg(trafficsrc) "avalanche"
+    set tcfg(trafficsrc) "pc"
+
+    # set the test results array
+    set tarr(key) "category"
+
+    # if tarr(value) is defined here, it will override the categories
+    # found in the config.tcl file.
+    #set tarr(value) "10-150"
+
+    set tarr(action_type) "1"
+    set tarr(avalance_response) "{{HTTP: 200: OK} 1} {{HTTP: 403: Forbidden} 0} {{HTTP: 302: Found} 0}"
+
+    ###########################################################
+    # End of user defined values
+    ###########################################################
+
+    #set ret [$::pc pc_curl_fetch_header "eth2" "cnn.com"]
+    #puts $ret
+
+    #array set test ""
+    #set ret [$::pc pc_curl_parse_header [data_from $ret] test "HTTP/1.1" "200 OK"]
+    #puts $ret
+
+    #foreach name [array names test] {
+    #    puts "$name = $test($name)"
+    #}
+
+    #exit
+
+    # configure nccs and run the avalanche test
+    set ret [nccs_core tcfg]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+puts $ret
+exit
+
+    # if ncc_core is successful then it will return the location of the nccs log dir.
+    set testdir [data_from $ret]
+
+    # get the list of categories
+    set ret [get_cats_from_config [file join $testdir config.tcl] tarr]
+    if { [problem_with $ret] } {
+        write_error "unable to get category list - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    foreach var [lsort -real $tarr(value)] {
+
+        # start a subtest
+        start_subtest "CATEGORY_$var"
+
+        set tarr(value) "$var"
+        set ret [nccs_compare_results tarr $testdir]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            end_subtest [list false [data_from $ret]]
+        } else {
+            end_subtest [list true [data_from $ret]]
+        }
+    }
+
+    return [analyze_subtest]
+}
+
+# this is required for auto loading
+package provide NCCS_URL_ESOFT_DEFAULT_FORWARD_PC 1.0

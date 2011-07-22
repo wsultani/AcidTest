@@ -1,0 +1,32 @@
+#!/usr/bin/expect --
+
+proc CLI_SHOW_002 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Fail on purpose while trying to get show version.}
+set ${p}(Suite)		{Sanity}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-12}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    set prompt {\[AAadmin:\]>}
+    set bv_cmd "show version"
+    set ret [send_expect_pair $sid $bv_cmd $prompt $prompt 3 3]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+	return [list false [data_from $ret]]
+    }
+    write_output [data_from $ret]
+    return [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide CLI_SHOW_002 1.0

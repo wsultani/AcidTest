@@ -1,0 +1,206 @@
+#!/usr/bin/expect --
+
+proc PER_1000_ZBRIDGE_QOS_JUMBO {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {testcase}
+set ${p}(Description)   {1000Mb performance test with zbridge and QoS on and Jumbo enabled}
+set ${p}(Suite)         {performance}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {dut {Slot0(port)}}
+set ${p}(Created)       {08-10-13}
+set ${p}(EOL)           {}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require sai_report
+    package require performance
+    package require performance_cfg
+
+    set ret [get_slot_info Slot0]
+    if { [problem_with $ret] } {
+        write_error "Unable to get Slot0 info - [data_from $ret]"
+        return $ret
+    }
+    set pcount [lindex [data_from $ret] 0]
+    set speed [lindex [data_from $ret] 1]
+
+    set ret [get_slot_info Slot1]
+    if { [problem_with $ret] } {
+        write_warning "Unable to get Slot1 info - [data_from $ret]"
+    } else {
+        set pcount "${pcount}x[lindex [data_from $ret] 0]"
+        set speed "${speed}x[lindex [data_from $ret] 1]"
+    }
+
+    set short 1
+    set standard 2
+    set long 3
+    set all 4
+    set jumbo 5
+
+    ###########################################################
+    # User defined values
+    ###########################################################
+    
+    set cfglst {zbridgeapp}
+    set testlst "$jumbo"
+    set qos on
+    set sbypass off
+    set jumbo on
+    set cpu "All"
+
+    ###########################################################
+    # End of user defined values
+    ###########################################################
+
+    set saifile "Perf_${pcount}Port_${speed}.sai"
+    if { $::sys_info(CPUNet) == 40 } {
+        set saifile "Perf_${pcount}Port_${speed}_CPU.sai"
+        set cpu 40
+        set testlst 40
+    }
+
+    set saifull [file join "tests" "performance" "$saifile"]
+
+    set email "btc-performance@bivio.net"
+    set ver [data_from [$::dut bivio_show_version]]
+
+    global env
+
+    # set up the environment required by smartbits.
+    set env(LD_LIBRARY_PATH) "/usr/local/smartbits/SmartBitsAPI/bin"
+    set env(PATH) "$env(PATH):/usr/local/smartbits/SmartBitsAPI/bin"
+    
+    # save the location of the current working dir
+    set restore [pwd]
+
+    # set the timestamp
+    set date [clock format [clock seconds] -format %Y%m%d]
+    set tstamp [clock format [clock seconds] -format %H%M%S]
+
+    set testdir [file join "/" "tmp" "$date-$tstamp"]
+
+    # Need to make a tmp dir. The sai file will run from here.
+    set ret [mk_dir "$testdir"]
+    if { [problem_with $ret] } {
+        write_error "Unable to make dir $testdir - [data_from $ret]"
+        return $ret
+    }
+
+    if { ![file exists $saifull] } {
+        write_error "$saifull does not exist"
+        return [list false "$saifull does not exist"]
+    }
+
+    # copy the sai file to the tmp dir.
+    set ret [copy_file $saifull $testdir]
+    if { [problem_with $ret] } {
+        write_error "Unable to copy $saifull to $testdir - [data_from $ret]"
+        return $ret 
+    }
+
+    # change to the test dir
+    if { [catch "cd $testdir" err] } {
+        write_error "could not cd to $tcdir - $err"
+        return [list false "$err"]
+    }
+
+    set report ""
+
+    foreach cfg $cfglst {
+
+        write_step "Setting QOS to $qos"
+        set ret [QOS_config $qos]
+        if { [problem_with $ret] } {
+            lreturn $ret
+        }
+
+        write_step "Setting softbypass to $sbypass"
+        set ret [softbypass_config $sbypass]
+        if { [problem_with $ret] } {
+            lreturn $ret
+        }
+
+        write_step "Loading $cfg config"
+        set ret [${cfg}_config]
+        if { [problem_with $ret] } {
+            lreturn $ret
+        }
+
+        write_step "Setting Jumbo to $jumbo"
+        set ret [$::dut bivio_config_jumbo $jumbo]
+        if { [problem_with $ret] } {
+            lreturn $ret
+        }
+
+        set subject "$pcount Port ${speed}Mb $cfg QoS $qos Jumbo $jumbo Sbypass $sbypass - [lindex $ver 0]"
+
+        foreach ftest $testlst {
+
+            set filename [getFlowInfo $saifile $ftest reportfilename]
+            set tname [file rootname [file tail $filename]]
+
+            write_step "Running $tname with $cfg..."
+
+            array set pinfo ""
+            set pinfo(Port) "$pcount"
+            set pinfo(Qos) "$qos"
+            set pinfo(CPU) "$cpu"
+            set pinfo(CFG) "$cfg"
+            set pinfo(Jumbo) "$jumbo"
+            set pinfo(Speed) "$speed"
+            set pinfo(Sbypass) "$sbypass"
+            set pinfo(Platform) "$::sys_info(Product)"
+
+            set ret [run_sai_test $saifile $ftest]
+            if { [problem_with $ret] } {
+                lreturn $ret
+            }
+
+            set rdata [parse_sai_results $saifile $ftest "" performance]
+
+            set ret [archive_sai_files $tname $cfg]
+
+            append report "[setPerfHeader $saifile $ftest]\n"
+            append report "$rdata\n\n"
+
+            # write out the results
+            write_info "$report"
+
+            set perror "PortError.csv"
+            if { [file exists "$perror"] } {
+                set fp [open "$perror" r]
+                set data [read $fp]
+                close $fp
+                write_warning "$data"
+                append report "$data"
+            }
+
+            send_simple_email "$email" "$subject" "$report"
+
+            set ret [check_results $rdata]
+            if { [problem_with $ret] } {
+                lreturn $ret
+            }
+        }
+    }
+
+    # delete testdir
+    set ret [delete_file $testdir]
+    if { [problem_with $ret] } {
+        write_warning "Unable to delete $testdir"
+    }
+
+    # change back to original dir
+    if { [catch "cd $restore" err] } {
+        write_error "could not cd to $restore - $err"
+    }
+    
+    lreturn [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide PER_1000_ZBRIDGE_QOS_JUMBO 1.0

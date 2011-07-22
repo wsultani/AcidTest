@@ -1,0 +1,315 @@
+#!/usr/bin/expect --
+
+proc write_debug { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated debug message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_debug <msg>}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 4
+    write_out DEBUG $msg $run_level
+}
+
+proc write_info { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated info message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_info <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 3
+    write_out INFO $msg $run_level
+}
+
+proc write_step { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated step message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_step <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 1
+    write_out STEP $msg $run_level
+}
+
+proc write_warning { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated warning message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_warning <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    # get the testcase name
+    if { [info exists ::sub_test(Name)] } {
+        lappend ::warnings($::sub_test(Name)) "$msg"
+        incr ::warnings(Total)
+    } else {
+        set proc [info level 2]
+        if { [info exists ::warnings($proc)] } {
+            lappend ::warnings($proc) "$msg" 
+            incr ::warnings(Total)
+        }
+    }
+
+    set run_level 1
+    write_out WARNING $msg $run_level
+}
+
+proc write_error { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated error message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_error <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 1
+    write_out ERROR $msg $run_level
+}
+
+proc write_output { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Print out a formated Return message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)	        {Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_output <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 3
+    set fmt "%-10s - %-8s - %-20s :\n%s"
+    write_out OUTPUT $msg $run_level $fmt
+}
+
+proc write_result { msg {proc ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{proc}
+set ${p}(Description)	{Print out a formated results message.}
+set ${p}(Arguments)	{msg proc}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)        {write_result <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 1
+    if { [info exist proc] && $proc != "" } {
+        write_out RESULT $msg $run_level "" $proc
+    } else {
+        write_out RESULT $msg $run_level
+    }
+}
+
+proc write_sent { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{proc}
+set ${p}(Description)	{Print out a formated sent message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_result <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 3
+    write_out SENT $msg $run_level
+}
+
+proc write_received { msg } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{proc}
+set ${p}(Description)	{Print out a formated received message.}
+set ${p}(Arguments)	{msg}
+set ${p}(Returns)	{}
+set ${p}(Suite)		{Log}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{2008-30-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{write_result <msg>}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set run_level 3
+    set fmt "%-10s - %-8s - %-20s :\n%s"
+    write_out RECEIVED $msg $run_level $fmt
+}
+
+proc write_out { type msg run_level {fmt ""} {lproc ""} } {
+
+    # if a break point is set then break out the loop.
+    if { $::break == "$type" } {
+        set ::loop 0
+    } elseif { $type == "RESULT" && $::break == "$msg" } {
+        set ::loop 0
+    }
+
+    # if a pause point is set then prepare to enter the interpreter.
+    set pinter 0
+    if { $::pause == "$type" } {
+        set imsg "$type"
+        set pinter 1
+    } elseif { $type == "RESULT" && $::pause == "$msg" } {
+        set imsg "$msg"
+        upvar #1 ret retvar
+        append msg "\n[data_from $retvar]"
+        set pinter 1
+    }
+
+    if { $lproc != "" } {
+        set invok_proc $lproc
+    } else {
+        set invok_proc [lindex [info level [expr [info level] - 2]] 0]
+    }
+
+    set timefmt {%H:%M:%S}
+
+    if { [info exist fmt] && $fmt != "" } {
+	set dispfmt $fmt
+    } else {
+        set dispfmt "\n%-10s - %-8s - %-20s - %s"
+    }
+
+    set timestamp [timestamp -format $timefmt]
+
+    if { $::verbose >= $run_level } { 
+        puts [format $dispfmt $type $timestamp $invok_proc $msg]
+    }
+
+    # replave any <> with correct code so html does not confuse for tag.
+    # but if there is a href (links) in message then leave it alone.
+    if { ![regexp "href" $msg match] } {
+        set msg_mod [regsub -all {\<} $msg {\&lt;}]
+        set msg_mod [regsub -all {\>} $msg_mod {\&gt;}]
+    } else {
+        set msg_mod $msg
+    }
+    
+    # if the logfile is open, then write to log
+    if { [info exists ::logging] && $::logging == 1 && [ info exists ::log] } {
+        array set data ""
+        set data(run_level) "$run_level"
+        set data(type) "$type"
+        set data(timestamp) "$timestamp"
+        set data(proc) "$invok_proc"
+        set data(msg) "$msg_mod"
+
+        custom_write_html $::log data
+        #write_raw_txt $::log data
+    }
+
+    set msgfmt "\n[string repeat "#" 100]\n%-s\n[string repeat "#" 100]\n"
+
+    # if a pause point is set then pause the script.
+    if { $pinter } {
+
+        # if mail option is available then send an email to indicate that the test has paused.
+        upvar #1 marray marr
+        if { [info exists marr(-mail)] && $marr(-mail) != "" } {
+            write_step "Sending notification emails to $marr(-mail)"
+            set sub "BTC Automated Email - Tetsbed $marr(-testbed) paused on $imsg as requested.."
+            set mfmt "%-20s : %s\n"
+            set mmsg [format $mfmt "Pause Trigger" "$imsg"]
+
+            append mmsg [format $mfmt "Testbed" "$marr(-testbed)"]
+
+            upvar #1 tc_info tcinfo
+            if { [info exists tcinfo] } {
+                append mmsg [format $mfmt "Testcase" "$tcinfo(Name)"]
+            }
+
+            append mmsg [format $mfmt "Proc" "$invok_proc"]
+
+            upvar #1 loopnum loop
+            if { [info exists loop] } {
+                append mmsg [format $mfmt "Loop" "$loop"]
+            }
+            append mmsg [format $mfmt "Message" "$msg"]
+            
+            send_simple_email "$marr(-mail)" "$sub" "$mmsg"
+        }
+
+        puts [format $msgfmt "Pause on \"$imsg\" selected\nEntering the interpreter....\n\
+		\t- CTRL+D to continue\n\
+		\t- CTRL+C to exit"]
+
+        # Entering the interpreter
+        interpreter
+
+        puts [format $msgfmt "Exiting interpreter"]
+    }
+}
+
+package provide btc_write 1.0

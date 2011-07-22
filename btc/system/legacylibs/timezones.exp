@@ -1,0 +1,162 @@
+#! /usr/bin/expect --
+#
+
+###########################################
+# TZ Direct Set
+###########################################
+# this array holds the expectation for timezone direct set
+set timezone(0) {Hawaii} 
+set timezone(1) {Alaska}
+set timezone(2) {Pacific Time}
+set timezone(3) {Arizona}
+set timezone(4) {Mountain Time}
+set timezone(5) {Central Time}
+set timezone(6) {Mexico City}
+set timezone(7) {Eastern Time}
+set timezone(8) {Atlantic Time}
+set timezone(9) {Newfoundland}
+set timezone(10) {Brazil/East}
+set timezone(11) {Buenos Aires}
+set timezone(12) {UTC}
+set timezone(13) {Western Europe}
+set timezone(14) {Central Europe}
+set timezone(15) {Eastern Europe}
+set timezone(16) {Moscow}
+set timezone(17) {Calcutta}
+set timezone(18) {China}
+set timezone(19) {Singapore}
+set timezone(20) {Western Australia}
+set timezone(21) {Taipei}
+set timezone(22) {Tokyo}
+set timezone(23) {Seoul}
+set timezone(24) {Eastern Australia}
+set timezone(25) {Your selection \>}
+
+# this array holds the expectation for comparo vs. result of "show timezone"
+set tzone(0) /US/Hawaii
+set tzone(1) /US/Alaska
+set tzone(2) /US/Pacific
+set tzone(3) /US/Arizona
+set tzone(4) /US/Mountain
+set tzone(5) /US/Central
+set tzone(6) /America/Mexico_City
+set tzone(7) /US/Eastern
+set tzone(8) /Canada/Atlantic
+set tzone(9) /Canada/Newfoundland
+set tzone(10) /Brazil/East
+set tzone(11) /America/Buenos_Aires
+set tzone(12) /UTC
+set tzone(13) /WET
+set tzone(14) /CET
+set tzone(15) /EET
+set tzone(16) /Europe/Moscow
+set tzone(17) /Asia/Calcutta
+set tzone(18) /Asia/Shanghai
+set tzone(19) /Asia/Singapore
+set tzone(20) /Australia/Perth
+set tzone(21) /Asia/Taipei
+set tzone(22) /Asia/Tokyo
+set tzone(23) /Asia/Seoul
+set tzone(24) /Australia/Sydney
+
+
+#######################################
+# TZ by country (tzselect)
+#######################################
+# Tree definitions for use with tzselect set/check by country
+# This is how the tree is organized:
+# 	(1st level) list of regions of the world eg. 
+#		    {asia africa americas}
+#  	(2nd level) list of countries in a region eg. 
+#		    americas-->{United_States Argentina Chile}
+#       (3rd level) list of TZ (if > 1) in a country eg.
+#   		    United_States-->{Hawaii Alaska Pacific Mountain} 
+
+# Define the top level i.e. region
+set regionl {{Africa} {Europe} {Asia} {Australia} {Pacific Ocean}\
+	     {Americas} {Atlantic Ocean}}
+
+# Define the 2nd level i.e. list of countries per region of the world
+set Africa {\
+	{Mauritania}\
+	{Nigeria}\
+	{South Africa}\
+	{Kenya}\
+}
+set Europe {\
+	{Ireland}\
+	{Italy}\
+	{Finland}\
+	{Russia}\
+}
+set Asia {\
+	{Afghanistan}\
+	{India}\
+	{Thailand}\
+	{Hong Kong}\
+	{Korea (South)}\
+	{Japan}\
+}
+set Australia {\
+	{Western Australia}\
+	{South Australia}\
+	{New South Wales - most locations}\
+}
+set "Pacific Ocean" {\
+	{Solomon Islands}\
+	{New Zealand}\
+	{Samoa (American)}\
+}
+set Americas {\
+	{United States}\
+	{Peru}\
+	{Venezuela}\
+	{Argentina}\
+}
+set "Atlantic Ocean" {\
+	{Iceland}\
+}
+
+# Define the 3rd level i.e the list of TZ (if more than one) per country
+# If there are more than one TZ in a country, the first member of the list
+# will not be "". The script will be checking on this fact.
+set Mauritania	{{{} Africa/Nouakchott 0}}
+set Nigeria 	{{{} Africa/Lagos 1}}
+set "South Africa" {{{} Africa/Johannesburg 2}}
+set Kenya 	{{{} Africa/Nairobi 3}}
+
+set Ireland {{{} Europe/Dublin 1}}
+set Italy {{{} Europe/Rome 2}}
+set Finland {{{} Europe/Helsinki 3}}
+set Russia {{{{Moscow\+00} - west Russia} Europe/Moscow 4}}
+
+set Afghanistan {{{} Asia/Kabul 5}}
+set India {{{} Asia/Calcutta 6}}
+set Thailand {{{} Asia/Bangkok 7}}
+set "Hong Kong" {{{} Asia/Hong_Kong 8}}
+set "Korea (South)" {{{} Asia/Seoul 9}}
+set Japan {{{} Asia/Tokyo 9}}
+
+set "Western Australia" {{{} Australia/Perth 8}}
+set "South Australia" {{{} Australia/Adelaide 9}}
+set "New South Wales - most locations" {{{} Australia/Sydney 10}}
+
+set "Solomon Islands" {{{} Pacific/Guadalcanal 11}}
+set "New Zealand" {{{most locations} Pacific/Auckland 12}}
+set "Samoa (American)" {{{} Pacific/Pago_Pago -11}}
+
+set "United States" {\
+	{{Hawaii} Pacific/Honolulu -10}\
+	{{Alaska Time {\d?\d\)}} America/Anchorage -9}\
+	{{Pacific Time {\d?\d\)}} America/Los_Angeles -8}\
+	{{Mountain Standard Time - Arizona} America/Phoenix -7}\
+	{{Mountain Time {\d?\d\)}} America/Denver -7}\
+	{{Central Time {\d?\d\)}} America/Chicago -6}\
+	{{Eastern Time {\d?\d\)}} America/New_York -5}\
+}
+set Peru {{{} America/Lima -5}}
+set Venezuela {{{} America/Caracas -4}}
+set Argentina {{{{[A-Za-z]+} {[A-Za-z]+} {\(BA}} America/Argentina/Buenos_Aires -3}}
+
+set Iceland {{{} Atlantic/Reykjavik 0}}
+

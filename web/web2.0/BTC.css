@@ -1,0 +1,259 @@
+body {
+}
+
+b {
+    font-family: tahoma, verdana, sans-serif;
+}
+
+pre {
+    font-size: medium;
+    white-space: pre-wrap; /* CSS2.1 compliant */
+    white-space: -moz-pre-wrap; /* Mozilla-based browsers */
+    white-space: o-pre-wrap; /* Opera 7+ */
+}
+
+#small {
+    font-size: x-small;
+    text-align: center;
+}
+
+button {
+    width: 100%;
+}
+
+td {
+    font-family: tahoma, verdana, sans-serif;
+    font-size: 80%;
+}
+
+#pass {
+    background-color: #00CC33;
+}
+
+#fail {
+    background-color: #FF3333;
+}
+
+#border {
+    border: 1px solid #666;
+    border-color: #BDBDBD;
+}
+
+#border-rowonly {
+    border: 1px solid #666;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-bottom: none;
+    border-color: #BDBDBD;
+}
+
+#warning {
+    background-color: #FBB917;
+}
+
+th {
+    font-family: tahoma, verdana, sans-serif;
+    font-size: 80%;
+    background-color: #E6E6E6;
+    padding: 5px;
+}
+
+hr {
+    border: 0;
+    background-color: #BDBDBD;
+    color: #BDBDBD;
+    height: 1px;
+}
+
+h1, h2, h3, h4 {
+    margin: 0;
+    padding-top: 1em;
+}
+
+/* Turn off list bullets */
+ul.mktree  li { list-style: none; } 
+
+/* Control how "spaced out" the tree is */
+ul.mktree, ul.mktree ul , ul.mktree li { margin-left:10px; padding:0px; }
+
+/* Provide space for our own "bullet" inside the LI */
+ul.mktree  li           .bullet { padding-left: 15px; }
+
+/* Show "bullets" in the links, depending on the class of the LI that the link's in */
+ul.mktree  li.liOpen    .bullet { cursor: pointer; background: url(minus.gif)  center left no-repeat; }
+ul.mktree  li.liClosed  .bullet { cursor: pointer; background: url(plus.gif)   center left no-repeat; }
+ul.mktree  li.liBullet  .bullet { cursor: default; background: url(bullet.gif) center left no-repeat; }
+
+/* Sublists are visible or not based on class of parent LI */
+ul.mktree  li.liOpen    ul { display: block; }
+ul.mktree  li.liClosed  ul { display: none; }
+
+/* Format menu items differently depending on what level of the tree they are in */
+ul.mktree  li { font-size: 12pt; }
+ul.mktree  li ul li { font-size: 10pt; }
+ul.mktree  li ul li ul li { font-size: 8pt; }
+ul.mktree  li ul li ul li ul li { font-size: 6pt; }
+
+#main {
+	border: 1px solid #666;
+	border-bottom: none;
+	border-left: none;
+	border-right: none;
+	clear: both;
+	background: #FFF3B3;
+}
+
+#contents {
+	border: 1px solid #666;
+	border-top: none;
+
+	//padding: 1.5em;
+	background: #FFFDF3;
+	//min-height: 300px;
+}
+
+#ref {
+	background: #FFCCFF;
+}
+
+
+/*******************************************************************************************************/
+
+
+ul#primary {
+	position: relative;
+	margin: 0;
+	padding: 0;
+	bottom: -5px;
+	z-index: 1;
+}
+
+ul#primary li  {
+	display: inline;
+	list-style: none;
+}
+
+ul#primary a, ul#primary span, ul#primary a.current {
+	width: 8em;
+	display: block;
+	float: left;
+	padding: 4px 0;
+	margin: 1px 2px 0 0;
+	text-align: center;
+	font-family: tahoma, verdana, sans-serif;
+	font-size: 100%;
+	text-decoration: none;
+	color: #333;
+}
+
+ul#primary span, ul#primary a.current, ul#primary a.current:hover {
+	border: 1px solid #666;
+	border-bottom: none;
+	background: #FFF3B3;
+	padding-bottom: 6px;
+	margin-top: 0;
+}
+
+ul#primary a {
+	background: #FFFAE1;
+	border: 1px solid #AAA;
+	border-bottom: none;
+}
+
+ul#primary a:hover {
+	margin-top: 0;
+	border-color: #666;
+	background: #FFF7CD;
+	padding-bottom: 5px;
+}
+
+
+/*******************************************************************************************************/
+
+div.tt {
+    position: relative;
+    display: inline;
+    color: #3CA3FF;
+    font-size: small;
+    font-weight: normal;
+    text-decoration: none;
+}
+
+div.tt a {
+    text-decoration: none;
+}
+
+div.tt a img {
+    width: 15px;
+}
+
+div.tt a div {
+    display: none;
+}
+
+div.tt a:hover div.tooltip {
+    display: block;
+    position: absolute;
+    z-index: 1;
+    top: -10px;
+    left: 50;
+    padding: 8px;
+    width: 200px;
+    color: #993300;
+    text-align: left;
+    filter: alpha(opacity:90);
+    KHTMLOpacity: 0.90;
+    MozOpacity: 0.90;
+    opacity: 0.90;
+    background: #FFF3B3;
+}
+
+/*******************************************************************************************************/
+
+
+ul#secondary {
+	background: #FFF3B3;
+	height: 2em;
+	position: relative;
+	margin: 0;
+	padding: 0;
+}
+
+ul#secondary li  {
+        display: inline;
+        list-style: none;
+}       
+
+ul#secondary li a, ul#secondary li span {
+	width: auto;
+	display: block;
+	float: left;
+	padding: 0 10px;
+	margin: 5px 0 5px 0;
+	text-align: auto;
+	border: none;
+	border-right: 1px dotted #AAA;
+	background: none;
+
+}
+
+ul#secondary li a {
+	color: #06C;
+	text-decoration: underline;
+}
+
+ul#secondary li a:hover {
+	color: #333;
+	background: transparent;
+	padding: 0 10px;
+	border: none;
+	border-right: 1px dotted #AAA;
+}
+
+ul#secondary li a:active {
+	color: #000;
+	background: transparent;
+}
+
+ul#secondary li:last-child a { border: none; }

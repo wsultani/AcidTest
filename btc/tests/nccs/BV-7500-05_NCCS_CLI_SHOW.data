@@ -1,0 +1,1121 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000229         
+APC1            : 13                  
+APC1ROM         : 2.45s               
+APCCount        : 1                   
+BackPlane0      : 11                  
+Build           : 5.0.7-3 NCCS 1.3.2-1.201105121342 FC5 ZCP System
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45s               
+NPC0Serial      : 7NPC-000568         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45s/2.45s         
+Shell           : Bivio CLI           
+Slot0           : 12-port Harrier 10/100/1000 Card
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(show)} {
+?
+  app            Show the specific application
+  cig            Show Configurable Inspection Groups
+  configuration  Show a configuration
+  cpus           Show CPUs info
+  date           Show system date
+  dbupdate       Show status of the last DB updating procedure
+  dictionary     Show categories DB dictionary
+  disk           Show disk status
+  interface      Show network interface status
+  log            Show specific functionality log
+  memberships    Show the members per group
+  memory         Show memory status
+  mgt            Show configuration auditing file
+  ntp            Show ntp info
+  protocols      Show protocols list
+  sensors        Show sensors
+  snmp           Show SNMP system peculiar information
+  system         Show system commands
+  topProcess     Show running top processes
+  users          Show users in configuring session
+  version        Show version info
+  vmstatus       Show virtual memory status
+
+[D
+}
+####################################################################################################
+set {CLI(show app)} {
+?
+  cdbserver     Url category db server
+  log_receiver  Logger application
+  nct           Inspection stack
+  <cr>          
+
+[D
+}
+####################################################################################################
+set {CLI(show app cdbserver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show app log_receiver)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show app nct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cig)} {
+?
+  list    Show various CIG tables
+  status  print out the CIG status summary
+
+[D
+}
+####################################################################################################
+set {CLI(show cig list)} {
+?
+  cpus      Show cpus inspection groups association
+  igs       Show inspection groups
+  tclasses  Show traffic classes
+  tsets     Show traffic sets
+
+[D
+}
+####################################################################################################
+set {CLI(show cig list cpus)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cig list igs)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cig list tclasses)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cig list tsets)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cig status)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration)} {
+?
+  candidate              Show candidate configuration
+  custom                 Show custom configuration
+  dnsEngine              Show running dns engine configuration
+  factory                Show factory configuration
+  inlineProvisioner      Show running inline provisioner configuration
+  loggerEngine           Show running logger engine configuration
+  platformConfiguration  Show running platform configuration
+  provSrvStruct          Show running provisioning data structure configuration
+  running                Show running configuration
+  sessionsMonitor        Show running session monitor configuration
+  startup                Show startup configuration
+  systemModules          Show running system modules configuration
+  templates              Show running provisioning templates configuration
+  trafficEnforcement     Show running traffic enforcement configuration
+  urlEngine              Show running urlfilter engine configuration
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate)} {
+?
+  dnsEngine              Show dns engine configuration
+  inlineProvisioner      Show inline provisioner configuration
+  loggerEngine           Show logger engine configuration
+  platformConfiguration  Show platform configuration
+  provSrvStruct          Show provisioning data structure configuration
+  sessionsMonitor        Show session monitor configuration
+  systemModules          Show system modules configuration
+  templates              Show provisioning templates configuration
+  trafficEnforcement     Show traffic enforcement configuration
+  urlEngine              Show urlfilter engine configuration
+  <cr>                   
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate dnsEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate inlineProvisioner)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate loggerEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate platformConfiguration)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate provSrvStruct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate sessionsMonitor)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate systemModules)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate templates)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate trafficEnforcement)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration candidate urlEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom)} {
+?
+  dnsEngine              Show dns engine configuration
+  inlineProvisioner      Show inline provisioner configuration
+  loggerEngine           Show logger engine configuration
+  platformConfiguration  Show platform configuration
+  provSrvStruct          Show provisioning data structure configuration
+  sessionsMonitor        Show session monitor configuration
+  systemModules          Show system modules configuration
+  templates              Show provisioning templates configuration
+  trafficEnforcement     Show traffic enforcement configuration
+  urlEngine              Show urlfilter engine configuration
+  <cr>                   
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom dnsEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom inlineProvisioner)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom loggerEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom platformConfiguration)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom provSrvStruct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom sessionsMonitor)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom systemModules)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom templates)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom trafficEnforcement)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration custom urlEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration dnsEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory)} {
+?
+  dnsEngine              Show dns engine configuration
+  inlineProvisioner      Show inline provisioner configuration
+  loggerEngine           Show logger engine configuration
+  platformConfiguration  Show platform configuration
+  provSrvStruct          Show provisioning data structure configuration
+  sessionsMonitor        Show session monitor configuration
+  systemModules          Show system modules configuration
+  templates              Show provisioning templates configuration
+  trafficEnforcement     Show traffic enforcement configuration
+  urlEngine              Show urlfilter engine configuration
+  <cr>                   
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory dnsEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory inlineProvisioner)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory loggerEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory platformConfiguration)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory provSrvStruct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory sessionsMonitor)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory systemModules)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory templates)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory trafficEnforcement)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration factory urlEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration inlineProvisioner)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration loggerEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration platformConfiguration)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration provSrvStruct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration running)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration sessionsMonitor)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup)} {
+?
+  dnsEngine              Show dns engine configuration
+  inlineProvisioner      Show inline provisioner configuration
+  loggerEngine           Show logger engine configuration
+  platformConfiguration  Show platform configuration
+  provSrvStruct          Show provisioning data structure configuration
+  sessionsMonitor        Show session monitor configuration
+  systemModules          Show system modules configuration
+  templates              Show provisioning templates configuration
+  trafficEnforcement     Show traffic enforcement configuration
+  urlEngine              Show urlfilter engine configuration
+  <cr>                   
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup dnsEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup inlineProvisioner)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup loggerEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup platformConfiguration)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup provSrvStruct)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup sessionsMonitor)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup systemModules)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup templates)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup trafficEnforcement)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration startup urlEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration systemModules)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration templates)} {
+?
+  counters  Show provisionind templates counters
+  <cr>      
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration templates counters)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration trafficEnforcement)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show configuration urlEngine)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus)} {
+?
+  groups     Show operational group
+  list       Show CPUs status info
+  loadshare  Show the loadshare XLR status
+  mem        Show CPUs available memory
+  stats      Show CPUs statistics
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus groups)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus list)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus loadshare)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus mem)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show cpus stats)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show date)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show dbupdate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show dictionary)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk)} {
+?
+  df          Show hard drives status
+  dists       Show partitions type and version
+  drives      Show logical discs status
+  free        Show free blocks (not partitioned)
+  partitions  Show partitions status
+  raid        Show RAID volume status
+
+[D
+}
+####################################################################################################
+set {CLI(show disk df)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk dists)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk drives)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk free)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk partitions)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show disk raid)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show interface)} {
+?
+  counters  Show general net devices statistics
+  fulcrum   Show FULCRUM statistics
+  <cr>      
+
+[D
+}
+####################################################################################################
+set {CLI(show interface counters)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show interface fulcrum)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log)} {
+?
+  associatorFile.fs.log        Log file to show
+  cacheStatFile.fs.log         Log file to show
+  classifierFile.fs.log        Log file to show
+  cpuInfoFile.fs.log           Log file to show
+  dnsDisagreementFile.fs.log   Log file to show
+  dnsServerFile.fs.log         Log file to show
+  dnsTrafficFile.fs.log        Log file to show
+  nccslogFile.fs.log           Log file to show
+  nctStatFile.fs.log           Log file to show
+  provisionerStatsFile.fs.log  Log file to show
+  sesmonFile.fs.log            Log file to show
+  systemInfoFile.fs.log        Log file to show
+  tunnelSesmonFile.fs.log      Log file to show
+  urlfilterDBAgentFile.fs.log  Log file to show
+  urlfilterFile.fs.log         Log file to show
+  urlfilterStatsFile.fs.log    Log file to show
+  voipFile.fs.log              Log file to show
+
+[D
+}
+####################################################################################################
+set {CLI(show log associatorFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log associatorFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log cacheStatFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log cacheStatFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log classifierFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log classifierFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log cpuInfoFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log cpuInfoFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log dnsDisagreementFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log dnsDisagreementFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log dnsServerFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log dnsServerFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log dnsTrafficFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log dnsTrafficFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log nccslogFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log nccslogFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log nctStatFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log nctStatFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log provisionerStatsFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log provisionerStatsFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log sesmonFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log sesmonFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log systemInfoFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log systemInfoFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log tunnelSesmonFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log tunnelSesmonFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterDBAgentFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterDBAgentFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterStatsFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log urlfilterStatsFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show log voipFile.fs.log)} {
+?
+  |     Pipe symbol
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show log voipFile.fs.log |)} {
+[D
+}
+####################################################################################################
+set {CLI(show memberships)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show memory)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show mgt)} {
+?
+    <No log file to show>
+
+[D
+}
+####################################################################################################
+set {CLI(show ntp)} {
+?
+  server  Shows configured ntp server
+  stats   Shows ntp statistics
+
+[D
+}
+####################################################################################################
+set {CLI(show ntp server)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show ntp stats)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show protocols)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show sensors)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show snmp)} {
+?
+  host   Keyword
+  local  Keyword
+
+[D
+}
+####################################################################################################
+set {CLI(show snmp host)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show snmp local)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show system)} {
+?
+  hwDB  Show hardware DB
+
+[D
+}
+####################################################################################################
+set {CLI(show system hwDB)} {
+?
+  details    Show inventory details
+  inventory  Show inventory
+  list       Show list
+
+[D
+}
+####################################################################################################
+set {CLI(show system hwDB details)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show system hwDB inventory)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show system hwDB list)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show topProcess)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show users)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show version)} {
+?
+  details   Show binaries and libraries version info
+  firmware  Show FPGA firmware version
+  <cr>      
+
+[D
+}
+####################################################################################################
+set {CLI(show version details)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show version firmware)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(show vmstatus)} {
+?
+  <*-*>  Integer number
+
+[D
+}

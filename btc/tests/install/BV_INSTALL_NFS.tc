@@ -1,0 +1,53 @@
+#!/usr/bin/expect --
+
+proc BV_INSTALL_NFS {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Reinstalls the bivio build via NFS}
+set ${p}(Suite)		{install}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-06-10}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    # get the arguments array to BTC.
+    upvar marray argar
+
+    # set the boot type
+    set btype tftp
+
+    # set the install type
+    set instype nfs
+
+    # set the single file install option
+    set sfi no
+
+    # set the local distribution partition
+    set ldp no
+
+    if { ![info exists argar(-build)] } {
+        set msg "Build not defined, test cannot continue without build info"
+        write_error "$msg"
+        return [list false $msg]
+    } else {
+        set build $argar(-build)
+    }
+
+    package require install_build
+
+    foreach dut [info globals {dut[0-9]*}] {
+        set ldut [set ::$dut]
+        set ret [install_build $ldut $build $btype $instype $sfi $ldp]
+        if { [problem_with $ret] } {
+            write_error "failed to load build $build - [data_from $ret]"
+        }
+    }
+
+    return $ret
+}
+package provide BV_INSTALL_NFS 1.0

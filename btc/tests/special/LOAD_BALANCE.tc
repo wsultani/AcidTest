@@ -1,0 +1,103 @@
+#!/usr/bin/expect --
+
+proc LOAD_BALANCE {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{test to see if load balancing is evenly distributing the packets across all cpus. This test assumes that traffic is running in the background. the Traffic generation is outside the scope of this testcase.}
+set ${p}(Suite)		{special}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-08-24}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set spawn_id $sid
+
+
+    set ret [$::dut bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "nrsp halt system" 
+    set exp "System is halted - Press ESC twice to reboot"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 45 20 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    exp_send \033
+    exp_send \033
+
+    set cmd ""          
+    set exp "login:"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 45 20 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # Loginto device and set the propmt
+    write_sent "root"
+    exp_send "root"
+    set ret [$::dut bivio_general_expect root root]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # wait for the cpus to converge
+    sleep 5
+
+    write_step "Performing show stats on dut"
+    set cmd "show_stats -c"
+    set exp "MCCP.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $sid $cmd $exp "$::prompt($::dut)" 2 15]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set data [data_from $ret]
+
+    set once 0
+    set err 0
+
+    foreach line [split $data "\n"] {
+        if { [regexp -nocase {(CPU-\S+)\s+(\d+)} $line match cpu count] } {
+            if { $once == 0 } {
+                set lastcount $count
+                write_info "Packet count to match against is set to $lastcount"
+                incr once
+            }
+
+            if { $count < [expr $lastcount / 2] } {
+                write_warning "Packet count for $cpu is $count which is less then [expr $lastcount / 2]"
+                write_info "$line"
+                incr err
+            }
+        }
+    }
+
+    if { $once <= 0 } {
+        write_error "couldn't read cpu stats"
+        return [list false [data_from $ret]]
+    }
+
+    if { $err > 0 } {
+        write_error "Packets not distributed evenly across all cpus"
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+# this is required for auto loading
+package provide LOAD_BALANCE 1.0

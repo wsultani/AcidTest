@@ -1,0 +1,60 @@
+#!/usr/bin/expect --
+
+proc APP_NPROBE {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test nPROBE 4.9.4 opensource app to ensure proper basic usage.}
+set ${p}(Suite)		{application}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{09-06-15}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+    set pc0_sid $::sid($::pc0)
+
+    set cfg nprobe
+    set rpmlst "nProbe-4.9.4-4.B7000.ppc.rpm"
+
+    set ret [$::dut bivio_nrsp_reset default all]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Loading $cfg config"
+    set ret [${cfg}_config $rpmlst]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Manually start $cfg on $::dut"
+    set cmd "bvcmd CPU-1c0 /etc/init.d/${cfg}ctl run"
+    set exp "Capturing packets from interface default"
+    set ret [send_expect_pair $dut_sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Manually stop $cfg on $::dut"
+    set cmd {\003}
+    set exp ""
+    set ret [send_expect_pair $dut_sid $cmd "$exp" $::prompt($::dut) 2 5 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+# this is required for auto loading
+package provide APP_NPROBE 1.0

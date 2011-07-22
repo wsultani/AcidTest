@@ -1,0 +1,54 @@
+#!/usr/bin/expect --
+
+proc SUB_TEST_001 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Just a development testcase, use this proc to build and test development testcases}
+set ${p}(Suite)		{Test}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{::dut}
+set ${p}(Created)	{08-04-21}
+set ${p}(EOL)		{}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    write_step "Getting version"
+    set ret [$::dut bivio_show_version]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach st {SubTestA SubTestB} {
+
+        start_subtest $st
+
+        write_step "Getting sys info"
+        set ret [$::dut bivio_sys_info]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            set res [list false [data_from $ret]]
+        } else {
+            set res [list true [data_from $ret]]
+        }
+
+        end_subtest $res
+    }
+
+    write_step "Getting version"
+    set ret [$::dut bivio_show_version]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return $res
+}
+
+# this is required for auto loading
+package provide SUB_TEST_001 1.0

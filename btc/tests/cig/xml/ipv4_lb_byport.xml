@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Default Transparent Mode Configuration">
+
+ <!-- Enable/Disable Switch -->
+   <CIG:Enabled>yes</CIG:Enabled>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- all cpu inspection group -->
+   <CIG:InspectionGroup name="all-ig">
+      <CIG:Cpus from="apc">all</CIG:Cpus>
+      <CIG:Require failstate="open">1</CIG:Require>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for all interfaces -->
+   <CIG:TrafficSet name="oem-trans">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>all</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class: Load balance the traffic -->
+      <CIG:TrafficClass name="all-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="load-balance-by-port">all-ig</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- Errored packets traffic class -->
+      <CIG:TrafficClass name="all-errors">
+         <CIG:Classification>ERR_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class: Pass it through -->
+      <CIG:TrafficClass name="all-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

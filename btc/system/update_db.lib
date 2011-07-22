@@ -1,0 +1,229 @@
+#!/usr/bin/expect --
+
+proc update_mysql_db_main { proc_info {db_schema ""} {table "btc_tests"} {force ""} {search ""} } {
+
+    # set the local mysql handle to the global handle
+    set mysql $::mysql
+
+    upvar 2 $proc_info lproc_info
+    set timenow [clock format [clock seconds] -format {%Y%m%d%H%M%S}]
+    set lproc_info(LastUsed) "$timenow"
+
+    if { $search != "" } {
+        set criteria $lproc_info($search)
+    } else {
+        set search Name
+        set criteria $lproc_info(Name)
+    }
+ 
+    # check to see if value alreay in db
+    set sql_cmd "SELECT $search FROM $table WHERE $search = \"$criteria\""
+    if { [catch {::mysql::sel $mysql $sql_cmd -list} ret] } {
+        write_debug "error while $sql_cmd - $ret"
+        return [list false "$ret"]
+    }
+
+    # if no entry in db.
+    if { [llength $ret] <= 0 } {
+        #write_debug "$criteria does not exist in $table"
+    } else {
+        #write_debug "$criteria alreay exist in $table - $ret"
+	if { $force == "force" } {
+            write_debug "force flag is set - updating fields in $table"
+	    foreach key $db_schema {
+                if { ![info exists lproc_info($key)] } {
+		    continue
+		}
+
+                # if there is a math operation then do no put value inside quotes.
+                if { [regexp "$key\\s+\\S+\\s+\\d+" $lproc_info($key) match] } {
+                    set fmt {UPDATE %s SET %s = %s WHERE %s = "%s"}
+                } else {
+                    set fmt {UPDATE %s SET %s = '%s' WHERE %s = "%s"}
+                }
+     		set sql_cmd [format $fmt $table $key "$lproc_info($key)" $search "$criteria"]
+
+	        set ret [::mysql::exec $mysql "$sql_cmd"]
+                #write_debug "$ret rows updated"
+	    }
+            return
+        }
+        if { [lsearch -exact $db_schema "Count"] > 0 } {
+            # increment counter
+            #write_debug "incrementing $criteria count by 1"
+     	    set sql_cmd "UPDATE $table SET Count = Count + 1 WHERE $search = \"$criteria\""
+	    set ret [::mysql::exec $mysql "$sql_cmd"]
+            #write_debug "$ret rows updated"
+            return
+        }
+    }    
+
+    # prepare to insert a new row in db.
+    set sql_cmd ""
+    foreach dbkey $db_schema {
+        if { [info exists lproc_info($dbkey)] } {
+	    lappend sql_cmd "\'$lproc_info($dbkey)\'"
+        } else {
+	    lappend sql_cmd "\'\'"
+	}
+    }
+
+    foreach dbk $db_schema {
+        lappend db_schema_mod "`$dbk`"
+    }
+
+    set keys [join $db_schema_mod ", "]
+    set sql_cmd [join $sql_cmd ", "]
+
+    write_debug "inserting $criteria info into $table"
+    set cmd "INSERT INTO $table \($keys\) VALUES \($sql_cmd\)"
+    write_debug "mysql cmd ==> \n$cmd"
+    set ret [::mysql::exec $mysql "$cmd"]
+    write_debug "$ret rows updated"
+    
+    if { [lsearch -exact $db_schema "Count"] > 0 } {
+        # increment counter
+        #write_debug "incrementing $criteria count by 1"
+        set sql_cmd "UPDATE $table SET Count = Count + 1 WHERE $search = \"$criteria\""
+        set ret [::mysql::exec $mysql "$sql_cmd"]
+        #write_debug "$ret rows updated"
+    }
+
+    return
+}
+
+proc update_mysql_db { proc_info { force "" } } {
+
+    upvar $proc_info nproc_info
+
+    if { ![info exists ::mysql] || $::post != 1 } {
+        #puts "::mysql object does not exist - can't update db for $nproc_info(Name)"
+        return
+    }
+
+    switch $nproc_info(type) {
+        testcase {
+	    set table "btc_tests"
+	    set db_schema { id Name Description Suite Comments \
+					Author Required Created EOL Count \
+					AvgTime Result Failure DefectID LastUsed Version \
+					PassCount FailCount }
+            set search Name
+        }
+
+        proc {
+	    set table "btc_procs"
+	    set db_schema { id Name Description Arguments Return Suite Comments \
+					Author Required Syntax Created EOL Count LastUsed }
+            set search Name
+        }
+
+        build {
+	    set table "btc_builds"
+	    set db_schema { id Version PassRate Log Date Total PassCount \
+					FailCount DefectCount Platform Testbed FPGA ROM Serials Comments}
+            set search Log
+        }
+
+        performance {
+	    set table "btc_perf"
+	    set db_schema { id Serial Result Log Date \
+					TestType HWType Testbed }
+            set search Log
+        }
+
+        default {
+	    write_debug "Undefined type, $nproc_info(type) - database not updated"
+	    return
+	}
+    }
+    set ret [update_mysql_db_main $proc_info $db_schema $table $force $search]
+    return $ret
+}
+
+proc calc_avrg_time { narry {table "btc_tests"} } {
+
+    # set the local mysql handle to the global handle
+    set mysql $::mysql
+
+    upvar $narry larray
+
+    # get the current avgtime and count from db
+    set sql_cmd "SELECT AvgTime, Count FROM $table WHERE Name = \"$larray(Name)\""
+    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+        write_debug "error while $sql_cmd - $ret"
+        return [list false "$ret"]
+    }
+
+    set atime [lindex $ret 0]
+    set count [lindex $ret 1]
+    if { $count >= 2 } {
+        set avgtime [expr ( ($atime * ($count - 1)) + $larray(AvgTime) )/ $count]
+    } else {
+	set avgtime $larray(AvgTime)
+    }
+    return [list true "$avgtime"]
+}
+
+proc get_avrg_time { tc {table "btc_tests"} } {
+
+    # set the local mysql handle to the global handle
+    set mysql $::mysql
+
+    # get the current avgtime from db
+    set sql_cmd "SELECT AvgTime FROM $table WHERE Name = \"$tc\""
+    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+        write_debug "error while $sql_cmd - $ret"
+        return [list false "$ret"]
+    }
+
+    set atime $ret
+    return [list true "$atime"]
+}
+
+proc is_runable { tc {table "btc_tests"} } {
+
+    # set the local mysql handle to the global handle
+    set mysql $::mysql
+
+    # get the list of required globals
+    set sql_cmd "SELECT Required FROM $table WHERE Name = \"$tc\""
+    if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
+        write_debug "error while $sql_cmd - $ret"
+        return [list false "$ret"]
+    }
+
+    foreach req [eval concat $ret] {
+
+        if { [regexp {(\S+)\((.*)\)} $req match name val] } {
+            if { [regexp -nocase ".*$val.*" "$::sys_info($name)" match] } {
+                write_debug "Required\($val\) - Found\($::sys_info($name)\)"
+                continue
+            } else {
+                lappend lost $req
+                continue
+            }
+        }
+
+        if { $req == "" } {
+            continue
+        }
+
+        set ex [info globals $req]
+        if { $ex == "" } {
+            lappend lost $req
+            continue
+        } else {
+            write_debug "Required\($req\) - Found\($ex\)"
+            continue
+        }
+    }
+
+    if { [info exists lost] && [llength lost] > 0 } {
+        return [list false "$lost"]
+    }
+
+    return [list true "$ret"]
+}
+
+package provide btc_update_db 1.0

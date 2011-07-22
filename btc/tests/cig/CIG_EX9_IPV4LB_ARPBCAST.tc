@@ -1,0 +1,66 @@
+#!/usr/bin/expect --
+
+proc CIG_EX9_IPV4LB_ARPBCAST {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Tests (1) LB IPv4 with an IG, and (2) Broadcast ARP to a sub-IG as per eg#9 in /etc/bivio/bvcig/examples.}
+set ${p}(Suite)		{cig}
+set ${p}(Comments)	{}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{09-12-18}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require cigprocs
+
+    set cfgarr(cfg) zbridgeapp
+    set cfgarr(rpmlst) ""
+    set cfgarr(mbps) 200
+    set cfgarr(pkt_count) 1000
+
+    # define testcase xml 
+    set srcdir "automation/btc/tests/cig/xml"
+    set srcfile "bvcig-eg9.xml"
+    set cfgarr(testcase_xml) [file join $srcdir $srcfile]
+    set cfgarr(mode) "" 
+
+    # define array for comparison vs. xlr stats
+    set ingress s0.e0
+    set egress s0.e1
+    set ideal($ingress\_rx) $cfgarr(pkt_count) 
+    set ideal(stack_rx) $cfgarr(pkt_count) 
+
+    # define array for comparison vs. cpu stats for loadbalance subtest 
+    set corecount 2 
+    set pktpercore [expr {$cfgarr(pkt_count) / $corecount}]
+    set coreideal(cpu-1c0_rx) $pktpercore 
+    set coreideal(cpu-1c1_rx) $pktpercore 
+    set coreideal(total_rx) $cfgarr(pkt_count)
+ 
+    # define traffic for loadbalance subtest 
+    set cfgarr(pcaplst) {"ether_128B_IPV4_UDP_1burst1000.pcap"}
+
+    # common code
+    set ret [cig_shared_code]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        cigreturn [list false [data_from $ret]]
+    }
+
+    # re-define array for comparison vs. cpu stats for broadcast subtest
+    array unset coreideal ; array set coreideal ""
+    set coreideal(cpu-1c0_rx) $cfgarr(pkt_count) 
+    set coreideal(total_rx) $cfgarr(pkt_count)
+
+    # use different traffic too
+    set cfgarr(pcaplst) {"ether_68B_ARP_1burst1000.pcap"}
+
+    cigreturn [cig_shared_code]
+} ;# proc
+
+# this is required for auto loading
+package provide CIG_EX9_IPV4LB_ARPBCAST 1.0

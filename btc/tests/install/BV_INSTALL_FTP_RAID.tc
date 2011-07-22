@@ -1,0 +1,71 @@
+#!/usr/bin/expect --
+
+proc BV_INSTALL_FTP_RAID {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Reinstalls the bivio build via FTP with RAID configured}
+set ${p}(Suite)		{install}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-06-10}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    # get the arguments array to BTC.
+    upvar marray argar
+
+    # set the boot type
+    set btype tftp
+
+    # set the install type
+    set instype ftp
+
+    # set the single file install option
+    set sfi no
+
+    # set the local distribution partition
+    set ldp no
+
+    # set the scsi configuration
+    set inst_ldp no
+
+    # set the scsi configuration
+    set scsi_cfg raid
+
+    if { ![info exists argar(-build)] } {
+        set msg "Build not defined, test cannot continue without build info"
+        write_error "$msg"
+        return [list false $msg]
+    } else {
+        set build $argar(-build)
+    }
+
+    package require install_build
+
+    foreach dut [info globals {dut[0-9]*}] {
+        set ldut [set ::$dut]
+        set ret [install_build $ldut $build $btype $instype $sfi $ldp $inst_ldp $scsi_cfg]
+        if { [problem_with $ret] } {
+            write_error "failed to load build $build - [data_from $ret]"
+        }
+    }
+
+    write_step "Disabling $scsi_cfg.."
+    # set the scsi configuration
+    set scsi_cfg noraidreboot
+    
+    foreach dut [info globals {dut[0-9]*}] {
+        set ldut [set ::$dut]
+        set ret [install_build $ldut $build $btype $instype $sfi $ldp $inst_ldp $scsi_cfg]
+        if { [problem_with $ret] } {
+            write_error "failed to load build $build - [data_from $ret]"
+        }
+    }
+
+    return $ret
+}
+package provide BV_INSTALL_FTP_RAID 1.0

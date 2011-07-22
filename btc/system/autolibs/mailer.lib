@@ -1,0 +1,116 @@
+#!/usr/bin/expect --
+
+proc send_notification_email { {buildinfo ""} {email_list ""} } {
+
+    package require smtp
+    package require mime
+
+    #set email_server "stimpy.bivio.net"
+    set email_server "localhost"
+    set orig "BivioTestCenter"
+    set subject "BTC Automated Notification"
+
+    set rdir [file join $::logdir "index.html"]
+
+    if { $buildinfo != "" } {
+        upvar $buildinfo binfo
+        append subject " - $binfo(Version)"
+    }
+
+    if { [file exists $rdir] } {
+        set token [mime::initialize -canonical text/html -file $rdir]
+    } else {
+        set data "
+          <html>
+          <head>
+          </head>
+          <body>
+        "
+        if { [array size binfo] != 0 } {
+            append data "
+                <table id=border cellpadding=5 border=1 width=40% frame=none rules=all>
+                  <tr><td colspan=2 align=center><h2>Summary Report</h2></td></tr>
+                  <tr><td>Build</td><td align=center>$binfo(Version)</td></tr>
+                  <tr><td>Device Under Test</td><td align=center>$binfo(Platform)</td></tr>
+                  <tr><td>Testbed</td><td align=center>$binfo(Testbed)</td></tr>
+                  <tr><td>Total Testcases Ran</td><td align=center>$binfo(Total)</td></tr>
+                  <tr><td>Total Testcases Passd</td><td align=center>$binfo(PassCount)</td></tr>
+                  <tr><td>Total Testcases Failed</td><td align=center>$binfo(FailCount)</td></tr>
+                  <tr><td><h4>Pass Rate</h4></td><td align=center><h4>$binfo(PassRate)%</h4></td></tr>
+                </table><br>
+            "
+        }
+
+        append data "
+            <table border=1 cellpadding=15 width=100%>
+              <tr><td>Result logs not available - Logging was disable by user</td></tr>
+              <tr><td>This is an automated message sent from the Bivio Test Center.\
+                      Do not reply to this email</td></tr>
+            </table>
+          </body>
+          </html>
+        "
+        set token [mime::initialize -canonical text/html -string $data]
+    }
+
+    append subject " - Test Completed"
+
+    mime::setheader $token Subject $subject
+
+    foreach recipient $email_list {
+        if { ![regexp "@" $recipient match] } {
+            append recipient "@bivio.net"
+        }
+        write_debug "Sending email to $recipient"
+        smtp::sendmessage $token -originator $orig -recipients $recipient -servers $email_server
+    }
+    mime::finalize $token
+}
+
+proc send_simple_email { {email_list ""} {subject ""} {body ""} } {
+
+    package require smtp
+    package require mime
+
+    #set email_server "stimpy.bivio.net"
+    set email_server "localhost"
+    set orig "BivioTestCenter"
+    set data "
+      <html>
+      <head>
+      </head>
+      <body>
+      <table>
+      <tr><td>
+    "
+    if { $subject == "" } {
+        set subject "BTC Automated Email"
+    }
+
+    if { $body == "" } {
+        append data "No email body provided"
+    } else {
+        append data "<pre>$body</pre>"
+    }
+
+    append data "
+        </td></tr>
+        </table>
+        </body>
+        </html>
+    "
+    set token [mime::initialize -canonical text/html -string $data]
+
+    mime::setheader $token Subject $subject
+
+    foreach recipient $email_list {
+        if { ![regexp "@" $recipient match] } {
+            append recipient "@bivio.net"
+        }
+        write_debug "Sending email to $recipient"
+        smtp::sendmessage $token -originator $orig -recipients $recipient -servers $email_server
+    }
+    mime::finalize $token
+}
+
+package provide mailer 1.0

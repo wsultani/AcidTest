@@ -1,0 +1,57 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #1: Simple Load Balancing">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <CIG:Interface name="s0.e0" type="transparent"/>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- red net inspection group -->
+   <CIG:InspectionGroup name="red-ig">
+      <CIG:Cpus from="apc">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for red net interfaces -->
+   <CIG:TrafficSet name="red">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="red-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="load-balance">red-ig</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- ARP traffic class -->
+      <CIG:TrafficClass name="red-arp">
+         <CIG:Classification>ETH_ARP_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- IPv6 traffic class -->
+      <CIG:TrafficClass name="red-IPv6">
+         <CIG:Classification>IPV6_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="red-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

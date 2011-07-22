@@ -1,0 +1,763 @@
+#! /usr/bin/expect --
+#
+
+#--------------------
+# set AUTOHOME
+#--------------------
+global env
+if [info exists env(AUTOHOME)] {
+   set AUTOHOME $env(AUTOHOME)
+} else {
+   set AUTOHOME "~jenriq/automation"
+}
+
+#
+# Layer 1 proc. Does the actual telnet to host.
+#
+proc telnet_custom_prompt {ip args} {
+
+	set proc_name [lindex [info level 0] 0]
+	set msg "ENTER <$proc_name>\n" 
+        dbug $msg
+        send_user $msg
+
+	if {[llength $args]==4} {
+		dbug "$proc_name: Four (4) args received." 
+		set portnum [lindex $args 0]
+		set user [lindex $args 1]
+		set password [lindex $args 2]
+		set prompt [lindex $args 3]
+	} elseif {[llength $args]==3} {
+		dbug "$proc_name: Three (3) args received."
+		dbug "We will use default TCP port = 23."
+		set portnum 23 
+		set user [lindex $args 0]
+		set password [lindex $args 1]
+		set prompt [lindex $args 2]
+	} else {
+		log "$proc_name: Wrong # of arguments received."
+		dbug "<$proc_name> received <$ip>, <$args>"
+		dbug "EXIT <$proc_name>" 
+		exit 1	
+	}
+
+        spawn -noecho telnet $ip $portnum
+	dbug "Started telnet IP <$ip>, Port <$portnum>, spawn_id <$spawn_id>"
+
+	exec sleep 1
+	while 1 {
+		# login name
+	        expect {
+	                -re {(ame:|ogin:)} {
+                           set msg "$proc_name: Saw login prompt.\n"
+                           send_user $msg
+                           dbug $msg
+                           send $user\r
+                        }
+			-re "$prompt" {
+                           set msg "$proc_name: Saw prompt\
+                            <$expect_out(0,string)>.\n"
+                           send_user $msg
+                           dbug $msg
+                           break
+                        }
+			-re {(.*)\[admin\:(.*)\]>} { 
+                           send "exit\r" ; break 
+                        }
+                        -re {(CPU-)\d(.+)[#$]} { 
+                           send "exit\r" ; break 
+                        }
+	                -ex {assword:} {
+                           set msg "$proc_name: Saw password prompt.\n"
+                           send_user $msg
+                           dbug $msg
+                           send $password\r 
+                           sleep 1 ; break
+                        }
+	                -timeout 3 timeout {
+			   dbug "$proc_name: Timeout waiting for initial\
+			    prompt. Retrying to get the prompt.." 
+			   send "\r"
+			   continue
+			}
+	                eof {
+			   dbug "$proc_name: Telnet failed."
+			   error "$proc_name: Telnet failed." 
+			}
+	        } ;# exp
+
+		# password
+	        expect {
+	                "assword:" {send $password\r }
+	                -timeout 3 timeout {
+			   dbug "$proc_name: Timeout waiting for password\ 
+			    prompt. Restarting login.." 
+			   send "\r"
+			   continue
+			}
+	        } ;# exp
+
+                # are we in
+        	expect {
+			-ex "Login incorrect" { 
+			   dbug "$proc_name: Login failed. Retrying login.."
+			   continue 
+			}
+	                -timeout 2 timeout {
+                           # break out of the while loop now that login worked
+                           break
+                        }
+        	} ;# exp
+	} ;# while
+
+	# prompt
+	while 1 {
+        	expect {
+                	-re $prompt { break }
+	                -timeout 2 timeout {
+		  	   dbug "$proc_name: Login suceeded but no prompt?\
+			    Retrying to get the prompt.." 
+			   send "\r"
+			   continue
+			}
+        	} ;# exp
+	} ;# while
+
+	set msg "EXIT <$proc_name>\n" 
+        dbug $msg
+        send_user $msg
+
+        return  $spawn_id
+} ;# proc
+
+###############################################
+# OBSOLETE..USE telnet_custom_prompt INSTEAD
+###############################################
+#proc telnet_console_port {ip port_num  user password prompt} {
+#
+#	set port_num [expr $port_num + 5000]
+#	puts "\nIP: $ip		PORT: $port_num\n"
+#
+#        spawn -noecho telnet $ip $port_num
+#
+#	# try to get to the prompt
+#	while 1 {
+#        	send "\r"
+#        	expect {
+#			-ex $prompt { break ;# no need to login }
+#                	-ex "PU-X login:" {send $user\r}
+#			-gl "admin:*>" { send "exit\r" ; continue }
+#                	-timeout 3 timeout  {puts "Timeout--user name\n" ; continue}
+#                	 eof      {puts "Telnet failed" ; exit 1}
+#                }
+#        	expect {
+#                	"assword:" {send $password\r}
+#                	-timeout 3 timeout  {puts "Timeout--password\n" ; exit 1}
+#                }
+#	} ;# while
+#
+#        return  $spawn_id
+#}
+
+
+#
+# Layer 1 proc. Does the actual ssh to host.
+#
+proc ssh_custom_prompt {ip user password prompt} {
+
+        set proc_name [lindex [info level 0] 0]
+        dbug "ENTER <$proc_name>"
+
+        spawn -noecho ssh $ip -l $user
+	dbug "Spawned ssh connection to IPaddr <$ip>"
+	expect {
+		-ex "you want to continue connecting (yes/no)?" {
+			dbug "$proc_name: Authenticity of host can not be\
+ 			      established."
+			exec sleep 1
+			send "yes\r"
+		}
+		-ex "Host key verification failed" {
+			dbug "$proc_name: RSA host key has changed." 
+			exit 1	
+		}
+                -timeout 2 timeout {
+			dbug "$proc_name: No fingerprint issues. Logging in.."
+		}
+                eof { 
+			dbug "$proc_name: SSH failed." 
+			exit 1
+		}
+	} ;# expect	
+
+	# enter password
+        expect {
+                "assword:" {puts "*****" ; send $password\r}
+                -timeout 2 timeout {
+			dbug "$proc_name: Timeout waiting for password\ 
+			      prompt." 
+			exit 1
+		}
+        }
+
+	# try to get the prompt
+	exec sleep 1
+	while 1 {
+        	expect {
+                	-re $prompt { break }
+			-ex "Login incorrect" { 
+				#
+				# todo: put login/pw/prompt_get in while loop
+				dbug "$proc_name: Login failed. Retrying.."     
+				send "\r"
+				continue 
+			}
+                	-timeout 15 timeout {
+				dbug "$proc_name: Login suceeded but no prompt?\
+				     Retrying to get the prompt.." 
+				send "\r"
+				continue
+			}
+        	} ;# expect
+	} ;# while
+
+        dbug "EXIT <$proc_name>"
+        return  $spawn_id
+}
+
+
+proc goto_cli_top { spawn_id } {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     set spawn_id $spawn_id
+
+     # try to get to the prompt
+     send "\r"
+     while 1 {
+          expect {
+               -re {(.*)CPU-X(.*)[$#]} { send "su - admin\r" ; sleep 5 }
+               -re {(CPU-)\d(.+)[#$]} { send "exit\r" }
+               -re {(.*)\[admin\:\]>} { break ;# do nothing }
+               -re {(.*)\[admin\:(.+)\]>} { send "up\r" }
+               -timeout 3 timeout  {
+                    log "$proc_name: Timeout waiting for admin prompt"
+                    send "\r"
+	       }
+               eof {
+                    error "$proc_name: Unexpected EOF"
+	       }
+          } ;# expect
+     } ;# while
+
+     dbug "EXIT <$proc_name>"
+     return 0 
+
+} ;# proc
+
+
+proc goto_console_top { spawn_id } {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     set spawn_id $spawn_id
+
+     # try to get to the prompt
+     send "\r"
+     while 1 {
+          expect {
+               -re {(.*)CPU-X(.*)[$#]} { break ;# do nothing }
+               -re {(CPU-)\d(.+)[#$]} { send "exit\r" }
+               -re {(.*)admin(.*)>} { send "exit\r" }
+               -timeout 3 timeout  {
+                    log "$proc_name: Timeout waiting for console prompt"
+                    send "\r"
+               }
+               eof {
+                    error "$proc_name: Unexpected EOF"
+               }
+          } ;# expect
+     } ;# while
+
+     dbug "EXIT <$proc_name>"
+     return 0
+
+} ;# proc
+
+
+proc send_command { spawn_id commands expectationl {duration 5}} {
+###################################################################
+# INPUTS: 
+# spawn_id =>
+# commands => the command string to send to the process identified by spawn_id
+# expectationl => a regexp to expect for
+#
+# OUTPUTS:
+# expect_out_buffer => is a list (space delimited) containing all elements 
+# starting from just before the command string until (a) just after the 
+# expectation if successful OR (b) just after the last reply from process if 
+# unsuccessful. If unsuccessful, a TCL error is also generated.
+# 
+# REV/AUTHOR(s):
+# Initial rev. -- jenriq
+#
+###################################################################
+	
+	set proc_name [lindex [info level 0] 0]
+	dbug "ENTER <$proc_name>" 
+	set spawn_id $spawn_id
+
+	# flush the expect buffer
+	flush_expbuffer $spawn_id 
+	dbug "$proc_name: Flushed the expect buffer."
+
+	# then send the command string
+	send -i $spawn_id "$commands\r"
+	dbug "$proc_name: Sent <$commands>"
+
+        # watch out for the expectation
+	expect {
+		-re "(.*)($expectationl)(.*)" {
+			dbug "$proc_name: Saw <$expect_out(2,string)>"	
+
+	                # return the expect_out buffer as a list
+                        # that might be useful for the calling program
+                        dbug "EXIT <$proc_name>" 	
+	                return "$expect_out(buffer)" 
+		}
+		-timeout $duration timeout {
+                        log "$proc_name: waited $duration SEC but.."
+			log "$proc_name: did not see <$expectationl>" 
+			puts "\n$proc_name: did not see <$expectationl>" 
+
+			# match everything in expect buffer  
+			expect -re {.*}
+
+			# pass the contents of buffer that wasn't matched
+			# to the calling proc for troubleshooting
+			log "$proc_name: Instead saw <$expect_out(buffer)>"
+			puts "$proc_name: Instead saw <$expect_out(buffer)>"
+
+			dbug "EXIT <$proc_name>"
+			error "$expect_out(buffer)"  
+		}
+	} ;# expect
+
+} ;# proc
+
+
+proc get_num_index {screendump expectation} {
+###################################################################
+#
+# INPUTS: 
+# 	1) list holding the elements to compare to
+#   	2) list holding the elements to look for
+# OUTPUTS:
+#  	1) numeric index for the match found
+# AUTHOR(s):
+#   	11/27/2006 - jenriq. Initial rev.
+#
+##################################################################
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"     
+ 
+     # setup a counter to start at the last element of the screendump list
+     set sposition [expr [llength $screendump]-1]
+
+     # setup a counter to start at the last element of the expectation list
+     set eposition [expr [llength $expectation]-1]
+     
+     # iterate from the last element of expectation list so that if
+     # all expectation is matched, it is easy to find 
+     # the numeric index we are looking for
+     # which is simply before the current element in the screendump list
+
+     set matched 0 
+     # iterate from the last element of expectation list
+     for {set i $eposition} {$i>=0} {incr i -1} {
+
+          # iterate from the last element of screendump list
+          for {set n $sposition} {$n>=0} {incr n -1} {
+               set curr_exp [lindex $expectation $i]
+               set curr_dump [lindex $screendump $n]
+               dbug "Now expecting: <$curr_exp> Saw: <$curr_dump>" 
+             
+               if {[regexp -- $curr_exp $curr_dump]} {
+                    dbug "********** Match **********"
+                    # so let's see if the rest of our expectation list is met
+                    # but let's advance the position in the screendump list
+                    set sposition [expr $n-1]
+                    set matched 1
+                    break 
+               } elseif {$n==0} {
+                    dbug "EXIT <$proc_name>"
+                    error "$proc_name: no match even 'til end of screendump list"
+               } else {
+                    # no match and more element left in screendump list"
+                    if {$matched==1} {
+                         dbug "prior expectation was matched but not this time"
+                         # so go back to the beginning of expectation list
+                         # and compare vs. the next element in screendump
+                         set i [llength $expectation]
+                         set sposition [expr $n-1]
+                         set matched 0
+                         break
+                    } else {
+                         # prior and current expectation did not match
+                         # so we're keeping the same expectation and
+                         # will move on to next element of screendump list
+                         continue
+                    } ;# if $matched==1 
+               } ;# if regexp 
+          } ;# for n
+     } ;# for i
+
+     dbug "$proc_name: all the expectations have been matched so get the index"
+     # The number we are looking for should preceed the current 
+     # member of screendump list. Go to preceeding item and check if it is numeric
+     for {set i [incr n -1]} {$i >= 0} {incr i -1} {
+          set the_index [lindex $screendump $i]
+          if [regexp {\d\d?} $the_index] {
+               set the_index [string trimright $the_index ")"]
+               break 
+          }
+     }
+     log "$proc_name: index is <$the_index>"
+
+     dbug "EXIT <$proc_name>"
+     return $the_index
+     
+} ;# proc
+
+
+#########################################################################
+## INPUTS: 
+## 	1) list holding the elements to compare to
+##   	2) list holding the elements to look for
+## OUTPUTS:
+##  	1) BOOLEAN TRUE if match found otherwise FALSE
+## AUTHOR(s):
+##   	11/30/2006 - jenriq. Initial rev.
+#########################################################################
+#proc find_words_from_list {screendump expectation} {
+#
+#     set proc_name [lindex [info level 0] 0]
+#     dbug "ENTER <$proc_name>"     
+#     # setup a counter to start at the last element of the screendump list
+#     set sposition [expr [llength $screendump]-1]
+#
+#     # setup a counter to start at the last element of the expectation list
+#     set eposition [expr [llength $expectation]-1]
+#
+#     set matched 0 
+#     # iterate from the last element of expectation list 
+#     for {set i $eposition} {$i>=0} {incr i -1} {
+#
+#          # iterate from the last element of screendump list 
+#          for {set n $sposition} {$n>=0} {incr n -1} {
+#               set curr_exp [lindex $expectation $i]
+#               set curr_dump [lindex $screendump $n]
+#               dbug "Now expecting: <$curr_exp> Saw: <$curr_dump>" 
+#             
+#               if {[regexp -- $curr_exp $curr_dump]} {
+#                    dbug "********** Match **********"
+#                    # so let's see if the rest of our expectation list is met
+#                    # but let's advance the position in the screendump list
+#                    set sposition [expr $n-1]
+#                    set matched 1
+#                    break 
+#               } elseif {$n==0} {
+#                    log "$proc_name: no match even 'til end of screendump list"
+#                    dbug "EXIT <$proc_name>"
+#                    return FALSE
+#               } else {
+#                    # no match and more element left in screendump list"
+#                    if {$matched==1} {
+#                         dbug "prior expectation was matched but not this time"
+#                         # so go back to the beginning of expectation list
+#                         # and compare vs. the next element in screendump
+#                         set i [llength $expectation]
+#                         set sposition [expr $n-1]
+#                         set matched 0
+#                         break
+#                    } else {
+#                         # prior and current expectation did not match
+#                         # so we're keeping the same expectation and
+#                         # will move on to next element of screendump list
+#                         continue
+#                    } ;# if $matched==1 
+#               } ;# if regexp 
+#          } ;# for n
+#     } ;# for i
+#
+#     log "$proc_name: all the expectations have been matched"
+#     dbug "EXIT <$proc_name>"
+#     return TRUE
+#     
+#} ;# proc
+
+
+#######################################################################
+# INPUTS:
+#       1) list holding the elements to compare to
+#       2) list holding the elements to look for
+# OUTPUTS:
+#       1) BOOLEAN TRUE if match found otherwise FALSE
+# AUTHOR(s):
+#       3/16/2007 - jenriq. Initial rev.
+#######################################################################
+proc comp_two_strings {screendump expectation} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     # convert screendump to a string
+     set dumpstring ""
+     set dumpstring [join $screendump]
+     log "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+     log "+                         SCREENDUMP                             +"
+     log "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++"
+     log "<$dumpstring>"
+     log " "
+
+     # convert expectation to string 
+     set expstring ""
+     set expstring [join $expectation]
+     log "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+     log "^                         EXPECTATION                            ^"
+     log "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
+     log "<$expstring>"
+     log " "
+
+
+     log "=================================================================="
+     log "=                           RESULT                               ="
+     log "=================================================================="
+     if {[regexp -nocase -- $expstring $dumpstring matchVar]} {
+        dbug "$proc_name: MATCH OCCURED <$matchVar>"
+        dbug "EXIT <$proc_name>" 
+        return TRUE
+     } else {
+        log "$proc_name: SORRY..Expectation was not seen"
+        set testlist {} 
+        set expstring ""
+
+        # we will now try to find the last matching phrase to the 
+        # screendump so as to help in the troubleshooting
+        # of the dut or the script (grin)
+        foreach words $expectation {
+           # catch the last good phrase  
+           set lastphrase $expstring
+           # the next 2 lines build the expectation string
+           lappend testlist $words
+           set expstring [join $testlist]
+           # catch return value is important to determine either
+           # (1) there's a TCL error OR
+           # (3) break was issued hence we will break out of this for loop
+           switch [ catch { 
+              if {![regexp -nocase -- $expstring $dumpstring matchVar]} {
+                 break
+              } ;# if
+           } errorMsg ] {
+              1 { dbug "Error: <$errorMsg>" ;# don't care & keep iterating }
+              3 { break }    
+           } ;# switch
+        } ;# foreach
+        dbug "$proc_name LAST PATTERN MATCHED: <$lastphrase>"    
+        dbug " "
+        log "$proc_name REGULAR EXP FAILED @: <$expstring>"    
+
+        dbug "EXIT <$proc_name>"
+        return FALSE
+     } 
+} ;# proc
+
+
+proc check_telnet_enabled {spawn_id } {
+
+        set proc_name [lindex [info level 0] 0]
+        dbug "ENTER <$proc_name>" 
+	set spawn_id $spawn_id
+
+	if {[goto_cli_top $spawn_id]} {
+		puts "\nCan't get to CLI top level\n"
+		exit 1
+	}
+
+	send "config system\r"
+        expect {
+		admin:system {}
+                -timeout 2 timeout {puts "Timeout getting to system mode\n" ; exit 1}
+        }
+	send "show access\r"
+	expect {
+		"Telnet access        : off" {
+			dbug "EXIT <$proc_name>"
+ 			return 1 
+		}
+		"Telnet access        : on" { 
+			dbug "EXIT <$proc_name>"
+			return 0 
+		}
+                -timeout 2 timeout {
+			debug "Can't determine telnet setting"  
+			exit 1
+		}
+	} ;# expect
+} ;# proc
+
+proc enable_bivio_telnet {spawn_id} {
+        set proc_name [lindex [info level 0] 0]
+        dbug "ENTER <$proc_name>" 
+	set spawn_id $spawn_id
+	
+	if {[goto_cli_top $spawn_id]} {
+		puts "\nCan't get to CLI top level\n"
+		exit 1
+	}
+
+	send "config system\r"
+        expect {
+		admin:system {}
+                -timeout 2 timeout {puts "Timeout getting to system mode\n" ; exit 1}
+        }
+
+	# in system mode now..enable telnet
+	send "set access telnet on\r"
+	expect {
+		"enable outside access to telnet?" { send "y\r" }
+		-timeout 2 timeout { puts "Can not enable telnet\r" ; exit 1 }
+	}
+	expect {
+		"Access will be enabled when you" { send "commit boot\r" }
+		-timeout 2 timeout { puts "Can not enable telnet\r" ; exit 1 }
+	}	
+	expect {
+		admin:system {}
+		-timeout 2 timeout { puts "Can not enable telnet\r" ; exit 1 }
+	}
+
+        dbug "EXIT <$proc_name>"
+	return 0
+}
+
+
+proc get_prompt { spawn_id {prompt {(.*)CPU-X(.*)[$#]}} } {
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>" 
+     set spawn_id $spawn_id
+ 
+     # build the list of prompts that we will try later
+     set prompt_l {}
+     lappend prompt_l $prompt\
+          {(CPU-)\d(.+)[#$]}\
+          {(.*)admin:]}\
+          {(.*)admin:(.+)]}\
+#          {Command>}\
+#          {[Uu]?ser Name:}\
+#          {[Ll]?ogin:}
+
+     # try each prompt in the list
+     foreach possibleprompt $prompt_l {
+          set duration 0
+
+          # flush the expect buffer
+          flush_expbuffer $spawn_id
+          dbug "$proc_name: Flushed the expect buffer."
+          
+          # try to get the prompt in 3 attempts
+          for {set i 0} {$i < 3} {incr i} {
+               
+               # initially we will wait 3 sec. but incr the wait by 3 sec.
+               # on later attempts since the device might just be busy
+               incr duration 3 
+               expect {
+                    -re $possibleprompt { 
+                         dbug "Matched prompt <$expect_out(0,string)>"
+                         dbug "EXIT <$proc_name>"
+             	         return $expect_out(0,string) 
+     	            }
+                    -timeout $duration timeout { 
+     	                 set msg "$proc_name: Timeout waiting for\
+                          <$possibleprompt>. Retrying..\n"
+                         send_user $msg
+                         log $msg
+                         send "\r"
+     	            } 
+     	            eof { 
+     	                 set msg "$proc_name: Session terminated\n"
+                         send_user $msg
+     	                 error $msg 
+     	            } 
+               } ;# expect
+          } ;# for
+          
+          # at this point, 3 attempts were made but no cigar so we'll try the
+          # next prompt on the list
+          
+     } ;# foreach
+     
+     # still no match after going thru the prompts on the list 
+     # so we'll cause an error
+     set msg "$proc_name: Unrecognized prompt or system froze.\n" 	
+     send_user $msg 	
+     error $msg 	
+
+} ;# proc
+
+
+#-----------------------------------------------------------------------------#
+# flush_buffers
+##----------------------------------------------------------------------------
+##
+## Procedure flush_buffers {spawnid} - flush the expect buffer
+##
+##    I do not fully understand this, but sometimes we cannot get send to
+##    send right away unless we call this routine!
+##
+##----------------------------------------------------------------------------
+# input:    1) spawnid
+#
+# output:   Forces buffers to be flushed.
+#
+# example:  flush_buffers $spawn_id
+#
+# syntax:
+#
+# author:   2/97 - sjl
+#           10/98 - asharma Now expects '.* instead of *'.
+#
+#-----------------------------------------------------------------------------#
+proc flush_expbuffer {spawnid} {
+ 
+   set procname [lindex [info level 0] 0]
+   dbug "ENTER <$procname>"
+   set spawn_id $spawnid
+   set timeout 1
+ 
+   # While reading output, more than 2000 bytes  can  force
+   # earlier  bytes to be "forgotten".  This may be changed
+   # with the function match_max.  (Note  that  excessively
+   # large  values  can slow down the pattern matcher.)
+   #
+   # expect * - matches 0 or more incident of previous item. So in case the
+   #            previous item was an escape character it will try to match
+   #            only escape characters which is not good.
+   # however
+   # expect . - matches single character (not an escape character) so a
+   #            combination of expect ".*" will result in a match_max worth
+   #            of storage of valid characters (not escape characters).
+ 
+   expect -re ".*"
+   match_max 1024     ;# random big size
+   expect -re ".+"
+
+   dbug "EXIT <$procname>"
+
+} ;# proc 
+
+
+source $AUTOHOME\/shared\/bivio_procs.exp

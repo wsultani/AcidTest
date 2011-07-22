@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #11: Using Pre-Defined Action Groups">
+
+ <!-- Enable/Disable Switch -->
+   <CIG:Enabled>yes</CIG:Enabled>
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <CIG:Interface name="s0.e0" type="transparent">s0.e1</CIG:Interface>
+      <CIG:Interface name="s0.e1" type="transparent">s0.e0</CIG:Interface>
+      <CIG:Interface name="s0.e2" type="transparent">s0.e3</CIG:Interface>
+      <CIG:Interface name="s0.e3" type="transparent">s0.e2</CIG:Interface>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- First inspection group -->
+   <CIG:InspectionGroup name="my-ig1">
+      <CIG:Cpus from="apc">3</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+   <!-- Second inspection group -->
+   <CIG:InspectionGroup name="my-ig2">
+      <CIG:Cpus from="apc">3</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+ <!-- Pre-Defined Action Groups -->
+   <!-- My action group -->
+   <CIG:ActionGroup name="my-ag">
+      <CIG:Action type="load-balance">my-ig1</CIG:Action>
+      <CIG:Action type="load-balance">my-ig2</CIG:Action>
+   </CIG:ActionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for all interfaces -->
+   <CIG:TrafficSet name="my-net">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>all</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class: Load balance the traffic -->
+      <CIG:TrafficClass name="all-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+	 <!-- Action Group to handle traffic -->
+	 <CIG:ActionGroup>my-ag</CIG:ActionGroup>
+      </CIG:TrafficClass>
+
+       <!-- IPv6 traffic class -->
+      <CIG:TrafficClass name="all-IPv6">
+         <CIG:Classification>IPV6_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+
+       <!-- Errored packets traffic class -->
+      <CIG:TrafficClass name="all-errors">
+         <CIG:Classification>ERR_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class: Pass it through -->
+      <CIG:TrafficClass name="all-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

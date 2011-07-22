@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+
+<CIG:Configuration xmlns:CIG="http://www.bivio.net/cig" desc="Example #3: Tapping with load balancing">
+
+ <!-- Interface Configuration -->
+   <CIG:InterfaceConfig>
+      <CIG:Interface name="s0.e0" type="transparent">s0.e1</CIG:Interface>
+      <CIG:Interface name="s0.e1" type="transparent">s0.e0</CIG:Interface>
+   </CIG:InterfaceConfig>
+
+ <!-- Inspection Groups (CPUS) -->
+   <!-- red net inspection group -->
+   <CIG:InspectionGroup name="mktg-ig">
+      <CIG:Cpus from="apc">2</CIG:Cpus>
+   </CIG:InspectionGroup>
+
+ <!-- Traffic Sets - describes how to handle traffic -->
+   <!-- Traffic Set for mktg net interfaces -->
+   <CIG:TrafficSet name="mktg">
+      <CIG:Input>
+         <!-- Interface(s) assigned to this Set -->
+         <CIG:Interface>s0.e0</CIG:Interface>
+         <CIG:Interface>s0.e1</CIG:Interface>
+      </CIG:Input>
+
+       <!-- IP traffic class -->
+      <CIG:TrafficClass name="mktg-ip">
+         <CIG:Classification>IP_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+         <CIG:Action type="load-balance">mktg-ig</CIG:Action>
+      </CIG:TrafficClass>
+
+       <!-- Errored packets traffic class -->
+      <CIG:TrafficClass name="mktg-errors">
+         <CIG:Classification>ERR_ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="drop"/>
+      </CIG:TrafficClass>
+
+       <!-- Catch all traffic class -->
+      <CIG:TrafficClass name="mktg-other">
+         <CIG:Classification>ALL_PACKETS</CIG:Classification>
+
+         <!-- Actions to be applied -->
+         <CIG:Action type="pass-thru"/>
+      </CIG:TrafficClass>
+   </CIG:TrafficSet>
+
+</CIG:Configuration>

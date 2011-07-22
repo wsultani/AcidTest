@@ -1,0 +1,290 @@
+#!/usr/bin/expect --
+
+itcl::class adb {
+
+#    package require pc
+#    inherit pc
+
+    public variable devid ""
+
+    # this is required fpr all objects
+    method sys_info {}
+
+    method adb_getprop {}
+    method adb_install { apk }
+    method adb_uninstall { apk }
+    method adb_runtest { apk class }
+    method adb_runmonkey { apk evcount margs }
+    method adb_getapk_info { apk field }
+    method adb_launch_app { apk }
+    method adb_clean_install { apk }
+
+    constructor { devid ip_add user password ctype } {
+#        chain $ip_add $user $password $ctype
+#    } {
+        write_info "Creating object for device id: $devid"
+        eval configure -devid $devid 
+#        write_step "constructor chain to [info heritage] done"
+    }
+}
+
+itcl::body adb::sys_info {} {
+
+    upvar #1 marray marr
+    set pkg $marr(-build)
+
+    array set ::sys_info ""
+
+    set ret [adb_getapk_info $pkg "versionCode"]
+    if { [problem_with $ret] } {
+        set ::sys_info(Build) "Unidentified Build"
+    } else {
+        set ::sys_info(Build) [data_from $ret]
+    }
+
+    set ::sys_info(Vendor) ""
+    set ::sys_info(Os) ""
+    set ::sys_info(Shell) ""
+    set ::sys_info(Product) ""
+
+    return [list true ""]
+}
+
+itcl::body adb::adb_getprop {} {
+
+    set cmd "adb -s $devid shell getprop"
+#    set exp "$cmd.*$::prompt($this)"
+#    set ret [send_expect_pair $spawn_id $cmd $exp "$::prompt($this)" 2 3]
+#    if { [problem_with $ret] } {
+#        write_error [data_from $ret]
+#        return [list false [data_from $ret]]
+#    }
+
+
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
+    foreach line [split $ret "\n"] {
+        if { [regexp {\[(.*)\]:\s+\[(.*)\]} $line match key val] } {
+            set sys($key) $val
+        }
+    }
+
+    set adb(manuf) $sys(ro.product.manufacturer)
+    set adb(brand) $sys(ro.product.brand)
+    set adb(serial) $sys(ro.serialno)
+    set adb(version) $sys(ro.build.version.release)
+    set adb(id) $sys(ro.build.id)
+
+    puts [array get adb]
+    return [list true ""]
+}
+
+itcl::body adb::adb_install { apk } {
+
+    set key "/var/www/html/automation/btc/tests/adb/debug.keystore"
+    
+    write_info "Signing with $key"
+    set ret [jarsigner $apk $key]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_info "Installing $apk"
+    set cmd "adb -s $devid install $apk"
+    if { [catch {eval exec $cmd} ret] } {
+        # for some reason the catch is triggered even if the cmd
+        # is successful.
+        #return [list false $ret]
+    }
+
+    if { ![regexp {Success} $ret match] } {
+        write_error $ret
+        return [list false $ret]
+    }
+
+    return [list true ""]
+}
+
+itcl::body adb::adb_uninstall { apk } {
+
+    set ret [adb_getapk_info $apk "package: name"]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+    set pkg [data_from $ret]
+
+    set cmd "adb -s $devid uninstall $pkg"
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
+    if { ![regexp {Success} $ret match] } {
+        write_error $ret
+        #return [list false $ret]
+    }
+
+    return [list true ""]
+}
+
+
+itcl::body adb::adb_runtest { apk {class} } {
+
+    set ret [adb_getapk_info $apk "package: name"]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+    set pkg [data_from $ret]
+
+    set cmd "adb -s $devid shell am instrument -w -e class $class $pkg/android.test.InstrumentationTestRunner"
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
+    if { ![regexp {OK\s+\(1 test\)} $ret match] } {
+        write_error $ret
+        return [list false $ret]
+    }
+
+    return [list true "$ret"]
+}
+
+itcl::body adb::adb_runmonkey { apk evcount margs } {
+
+    set ret [adb_launch_app $apk]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+
+    # wait for app to launch
+    sleep 5
+
+    set ret [adb_getapk_info $apk "package: name"]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+    set pkg [data_from $ret]
+
+
+    if { $margs != "" } {
+        upvar $margs ar
+        write_info "Using custom args - [array get ar]"
+    } else {
+        set ar(--throttle) 100
+        set ar(--pct-majornav) 0
+        set ar(--pct-syskeys) 0
+        set ar(--pct-touch) 50
+        set ar(--pct-motion) 50
+        set ar(--seed) 50
+        write_info "Using default args - [array get ar]"
+    }
+
+    if { $evcount == "" } {
+        set evcount 1000
+        write_info "Using default event count - $evcount"
+    }
+
+    set cmd "adb -s $devid shell monkey -p $pkg $evcount [array get ar]"
+    write_info "Running monkey - $cmd"
+
+    if { [catch {eval exec $cmd} ret] } {
+        write_error "$ret"
+        return [list false "$ret"]
+    }
+
+    if { [regexp {Monkey aborted due to error} $ret match] } {
+        write_error "Monkety test for $pkg failed - $ret"
+        return [list false "$ret"]
+    }
+
+    return [list true "$ret"]
+}
+
+itcl::body adb::adb_getapk_info { apk field } {
+
+    array set adb ""
+
+    set cmd "aapt dump badging $apk"
+    write_info "Checking info for $apk"
+
+    if { [catch {eval exec $cmd} ret] } {
+        write_error "$ret"
+        #return [list false "$ret"]
+    }
+
+    if { $field != "" } {
+        if { [regexp "$field\[:=\]\\s?\'(\[^'\]+)" $ret match val] } {
+            write_info "found $field - $val"
+            return [list true "$val"]
+        } else {
+            write_error "Unable to find $field - $ret"
+            return [list false "$ret"]
+        }
+    }
+
+    return [list true $ret]
+}
+
+itcl::body adb::adb_launch_app { apk } {
+
+    set ret [adb_getapk_info $apk "package: name"]
+    if { [problem_with $ret] } {
+        return $ret
+    }
+    set pkg [data_from $ret]
+
+    set ret [adb_getapk_info $apk "launchable activity name"]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    set lname [data_from $ret]
+
+    set cmd "adb -s $devid shell am start -a android.intent.action.MAIN -n '[file join $pkg $lname]'" 
+    if { [catch {eval exec $cmd} ret] } {
+        write_error "Unable to launch app - $ret"
+        return [list false "$ret"]
+    }
+
+    return [list true ""]
+}
+
+itcl::body adb::adb_clean_install { apk } {
+
+    write_step "Uninstalling $apk .."
+    set ret [$::adb adb_uninstall $apk]
+    if { [problem_with $ret data] } {
+        return $ret 
+    }
+
+    write_step "Installing $apk .."
+    set ret [$::adb adb_install $apk]
+    if { [problem_with $ret data] } {
+        return $ret 
+    }
+
+    return [list true ""]
+}
+
+#############################################################################
+
+proc jarsigner { apk sig } {
+
+    set cmd "zip -d $apk \"META-INF\*\""
+    if { [catch {eval exec $cmd} ret] } {
+        write_warning "$ret"
+        #return [list false $ret]
+    }
+
+    set alias androiddebugkey
+    set cmd "jarsigner -keystore $sig -storepass android -keypass android $apk $alias"
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
+    return [list true "$apk"]
+}
+
+# the following line must be left at the bottom of the script.
+package provide adb 1.0

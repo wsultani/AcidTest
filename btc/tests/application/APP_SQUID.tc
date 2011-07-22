@@ -1,0 +1,120 @@
+#!/usr/bin/expect --
+
+proc APP_SQUID {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test squid 3.0.0 opensource app to ensure proper basic usage.}
+set ${p}(Suite)		{application}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{09-06-15}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+    set pc0_sid $::sid($::pc0)
+
+    set cfg squid
+    set rpmlst "squid-3.0.STABLE5-3.B7000.ppc.rpm apcnat"
+
+    set comp_delta 0
+    set comparr(CPU-1c0) 1
+    set comparr(CPU-1c1) 1
+    set comparr(CPU-2c0) 1
+    set comparr(CPU-2c1) 1
+    set comparr(CPU-3c0) 1
+    set comparr(CPU-3c1) 1
+    set comparr(CPU-4c0) 1
+    set comparr(CPU-4c1) 1
+    set comparr(CPU-5c0) 1
+    set comparr(CPU-5c1) 1
+    set comparr(CPU-6c0) 1
+    set comparr(CPU-6c1) 1
+    set comparr(Total) 12
+    array set arr ""
+
+    set ret [$::dut bivio_nrsp_reset default all]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # make sure that the app is closed properly, otherwise the app will hang if
+    # config files are cleared while the app is running.
+    set ret [$::dut bivio_nrsp_stop $cfg]
+    if { [problem_with $ret] } {
+        write_warning [data_from $ret]
+    }
+
+    write_step "Clearing the config files on $::dut"
+    set ret [$::dut bivio_alert_count clean $cfg arr]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Loading $cfg config"
+    set ret [${cfg}_config $rpmlst]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Collecting non-zero config file counts on $::dut"
+    set ret [$::dut bivio_alert_count normal $cfg arr]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach aname [lsort [array names arr]] {
+        set min_comp [expr $comparr($aname) - $comp_delta]
+        if { $min_comp < 0 } {
+            set min_comp 0
+        }
+
+        set max_comp [expr $comparr($aname) + $comp_delta]
+
+        # the total count of non-zero files should be greater then $min_comp.
+        if { $aname == "Total" } {
+            if { $arr($aname) < $min_comp } {
+                write_error "config file count for $aname is $arr($aname), expected greater then $min_comp."
+                return [list false [data_from $ret]]
+            }
+            write_info "config file count for $aname is $arr($aname), expected greater then $min_comp."
+            continue
+        }
+
+        # the non-zero file count for each cpu should be between $min_pkt_count and $max_pkt_count.
+        if { $arr($aname) < $min_comp || $arr($aname) > $max_comp } {
+            write_warning "config file count for $aname is $arr($aname), expected between $min_comp-$max_comp."
+        } else {
+            write_info "config file count for $aname is $arr($aname), expected between $min_comp-$max_comp."
+        }
+    }
+
+    write_step "Disabling NAT"
+    set cmd "./apcnat disable"
+    set exp "APC Natting disabled"
+    set ret [send_expect_pair $dut_sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set ret [$::dut bivio_nrsp_stop $cfg]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+# this is required for auto loading
+package provide APP_SQUID 1.0

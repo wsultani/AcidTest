@@ -1,0 +1,427 @@
+#!/usr/bin/expect --
+
+proc MAN_TEST_001 { {testbed ""} {type ""} {serial ""} {test ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {testcase}
+set ${p}(Description)   {Perform the manufacturing test}
+set ${p}(Suite)         {manufacturing}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-04-18}
+set ${p}(EOL)           {}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require sai_report
+
+    array set perf ""
+    set perf(type) "performance"
+    set perf(Serial) "$serial"
+    set perf(Testbed) "$testbed"
+    set perf(HWType) "$type"
+    set perf(TestType) "$test"
+
+    set saifile ${test}.sai
+    set junktest 1
+    set io_fulltest 2
+    set chassis_quicktest 3
+    set chassis_fulltest 4
+
+    global env
+
+    # set the output format
+    set dfmt "%-40s [string repeat "." 60] " 
+    puts -nonewline "[format $dfmt "Preparing to run test $test"]"
+
+    # set up the environment required by smartbits.
+    set env(LD_LIBRARY_PATH) "/usr/local/smartbits/SmartBitsAPI/bin"
+    set env(PATH) "$env(PATH):/usr/local/smartbits/SmartBitsAPI/bin"
+    
+    # save the location of the current working dir
+    set restore [pwd]
+
+    # change to the test dir
+    set testdir {/var/www/html/automation/mfg}
+    if { [catch "cd $testdir" err] } {
+        write_error "could not cd to $tcdir - $err"
+        breturn [list false "$err"] perf
+    }
+
+    # set the timestamp
+    set date [clock format [clock seconds] -format %Y%m%d]
+    set tstamp [clock format [clock seconds] -format %H%M%S]
+
+    # create the results dir
+    set ret [mk_dir [list $type $serial $test "$date-$tstamp"]]
+    if { [problem_with $ret] } {
+        breturn $ret perf
+    }
+
+    set resdir [data_from $ret]
+    set perf(Log) $resdir
+    set perf(Date) "$date$tstamp"
+
+    if { ![file exists $saifile] } {
+        set msg "$saifile does not exist"
+        breturn [list false "$msg"] perf
+    }
+    puts "Pass"
+
+    if { $type == "IOCard" } {
+        # for iocards need to run twice once with zbridgeapp and once with bypass.
+        set cfglst {zbridgeapp bypass}
+        set testlst "$io_fulltest"
+    } else {
+        set cfglst {zbridgeapp}
+        set testlst "$chassis_quicktest $chassis_fulltest"
+
+        puts -nonewline "[format $dfmt "Running mfg validation test"]"
+        write_step "Running Validation test..."
+        set ret [$::dut bivio_run_mfgtest]
+        if { [problem_with $ret] } {
+            puts [data_from $ret]
+            breturn [list false ""] perf
+        } else {
+            puts Pass
+            set ret [parse_mfg_validation [data_from $ret]]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                breturn [list false [data_from $ret]] perf
+            }
+            set fd [open "$resdir/summary.txt" a+]
+            puts $fd "[data_from $ret]"
+            close $fd
+        }
+    }
+
+    set doonce 0
+
+    foreach cfg $cfglst {
+
+        puts -nonewline "[format $dfmt "Loading $cfg config"]"
+        write_step "Loading $cfg config"
+        set ret [${cfg}_config]
+        if { [problem_with $ret] } {
+            breturn $ret perf
+        }
+        puts "Pass"
+
+        if { $doonce <= 0 } {
+            # run the junktest
+            set filename [getReportFile $saifile $junktest]
+            set tname [file rootname [file tail $filename]]
+            puts -nonewline "[format $dfmt "Running $tname with $cfg"]"
+            write_step "Running $tname with $cfg..."
+            set ret [run_sai_test $saifile $junktest]
+
+            # delete the temp dir.
+            set ret [delete_file temp]
+            if { [problem_with $ret] } {
+                breturn $ret perf
+            }
+
+            puts Pass
+            incr doonce
+        }
+
+        foreach ftest $testlst {
+
+            set fd [open "$resdir/summary.txt" a+]
+            set fmt {%-15s %-15s}
+            puts $fd "[format $fmt Config "$cfg"]"
+            close $fd
+
+            set filename [getReportFile $saifile $ftest]
+            set tname [file rootname [file tail $filename]]
+
+            puts -nonewline "[format $dfmt "Running $tname with $cfg"]"
+            write_step "Running $tname with $cfg..."
+
+            set ret [run_sai_test $saifile $ftest]
+            if { [problem_with $ret] } {
+                breturn $ret perf
+            }
+
+            set data [parse_sai_results $saifile $ftest]
+
+            # write out the results
+            puts "\n$data"
+
+            set fd [open "$resdir/summary.txt" a+]
+            puts $fd "$data"
+            close $fd
+
+            # rename the files in temp to include the cfg info
+            foreach f [glob temp/*$tname*] {
+                set root [file rootname $f]
+                set ext [file extension $f]
+                set ret [rename_file $f "${root}_${cfg}$ext"]
+                if { [problem_with $ret] } {
+                    breturn $ret perf
+                }
+            }
+
+            # move the files in temp to results dir.
+            set ret [copy_file [glob temp/*$tname*] $resdir]
+            if { [problem_with $ret] } {
+                breturn $ret perf
+            }
+
+            # delete the temp dir.
+            set ret [delete_file temp]
+            if { [problem_with $ret] } {
+                breturn $ret perf
+            }
+
+            set ret [check_results $data]
+            if { [problem_with $ret] } {
+                breturn $ret perf
+            }
+        }
+
+        # unconfig the system.
+        if { $cfg == "bypass" } {
+            write_step "Resetting $cfg config"
+            set ret [$::dut bivio_set_bypass off]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                breturn $ret perf
+            }
+        }
+    }
+
+    breturn [list true [data_from $ret]] perf
+}
+
+proc parse_mfg_validation { data } {
+
+    set fmt {%-40s %-20s}
+    set report ""
+
+    set patternlst { {NPC CARD(.*)APC CARD} {APC CARD(.*)I/O CARD} }
+    foreach pat $patternlst {
+        if { ![regexp "$pat" $data match info] } {
+            set msg "Could not match $pat in $data"
+            write_error $msg
+            return [list false "$msg"]
+        }
+        append report "[format $fmt "[lindex $pat 0] CARD" Version]\n"
+        append report "[string repeat "-" 60]\n"
+ 
+        if { ![regexp {Control FPGA Version:\s+(\S+).*XPC FPGA Version:\s+(\S+).*Manufacturing ROM Version:\s+(\S+).*Extended ROM Version:\s+(\S+)} $info match con xpc mrom erom] } {
+            set msg "Could not get card data - $info"
+            write_error $msg
+            return [list false "$msg"]
+        }
+        append report "[format $fmt "Control FPGA Version" $con]\n"
+        append report "[format $fmt "XPC FPGA Version" $xpc]\n"
+        append report "[format $fmt "Manufacturing ROM Version" $mrom]\n"
+        append report "[format $fmt "Extended ROM Version" $erom]\n\n"
+    }
+
+    return [list true $report]
+}
+
+proc check_results { data } {
+    foreach line [split $data "\n"] {
+        if { [regexp {[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+Fail} $line match] } {
+            puts Fail
+            puts $data
+            return [list false "$line"]
+        }
+    }
+    return [list true "$data"]
+}
+
+proc gen_pack_slip { perf } {
+
+    set testdir {http://<? echo $_SERVER['SERVER_ADDR']; ?>/automation/mfg} 
+    upvar $perf par
+
+    if { [file exists "$par(Log)/summary.txt"] } {
+        set fp [open "$par(Log)/summary.txt" r]
+        set data [read $fp]
+        close $fp
+    } else {
+        set data "Summary results not available"
+    }
+
+    set out "
+    <html>
+    <head>
+      <title>Manufacturing Test Results ($par(Serial))</title>
+    </head>
+    <body>
+    <table border=0 cellpadding=10>
+    <tr><td>
+      <table border=0 width=850px cellpadding=0>
+        <tr>
+          <td><img src=\"$testdir/bivio.gif\"></td>
+          <td align=right>
+            <img src=\"$testdir/barcode.php\?barcode=$par(Serial)&width=300&height=50&format=jpeg&quality=100\">
+          </td>
+        </tr>
+        <tr><td><br>
+        <table width=100% border=0 cellpadding=0>
+          <tr><td><tt>Serial</tt></td><td><tt>$par(Serial)</tt></td></tr>
+          <tr><td><tt>Type</tt></td><td><tt>$par(HWType)</tt></td></tr>
+          <tr><td><tt>Testbed</tt></td><td><tt>$par(Testbed)</tt></td></tr>
+          <tr><td><tt>Date</tt></td><td><tt>$par(Date)</tt></td></tr>
+        </table>
+        </td>
+        </tr>
+      </table>
+    </td></tr>
+    <tr><td>
+      <pre>$data</pre>
+    </td></tr>
+    </table>
+    </body>
+    </html>
+    "
+    set fd [open "$par(Log)/index.php" w]
+    puts $fd $out
+    close $fd
+    return [list true ""]
+}
+
+proc run_sai_test { sai flow } {
+
+    # Need to make a temp dir. this is required for smartbits scripts.
+    set ret [mk_dir "temp"]
+    if { [problem_with $ret] } {
+        write_error "[data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    # reset the error code
+    set ::errorInfo ""
+    set ::errorCode "NONE"
+
+    write_debug "Running $sai $flow"
+    if { $::verbose > 1 } {
+        set stat [catch "exec smbapi $sai $flow >@stdout" ret ]
+    } else {
+        set stat [catch "exec smbapi $sai $flow" ret ]
+    }
+
+    if { ![string equal $::errorCode NONE] } {
+        puts "Fail"
+        set ecode "[lindex $::errorCode 0]"
+        set einfo "$::errorInfo"
+        write_error "$sai $flow exited with errorcode $ecode\n$einfo"
+        puts "$sai $flow exited with errorcode $ecode\n$einfo"
+        return [list false "$ecode"]
+    }
+
+    parse_sai_results $sai $flow
+    return [list true "[lindex $::errorCode 0]"]
+}
+
+proc breturn { lst {parr ""}} {
+
+    if { $parr != "" } {
+        upvar $parr perf
+
+        if { [problem_with $lst] } {
+            set res FAIL
+            set debug [data_from $lst]
+        } else {
+            set res PASS
+        }
+        set perf(Result) "$res"
+
+        set ret [update_mysql_db perf]
+        if { [problem_with $ret] } {
+            write_debug  "$perf(Serial) info on db not updated - [data_from $ret]"
+        }
+    }
+
+    if { [info exists debug] } {
+        set fd [open "$perf(Log)/summary.txt" a+]
+        set out "\n[string repeat "=" 42] Start of Debug Info [string repeat "=" 42]\n"
+        append out "Test failed !!\n"
+        append out "[string repeat "-" 105]\n"
+        append out "Fail Reason:\n"
+        append out "$debug\n"
+        append out "[string repeat "-" 105]\n"
+
+        append out "[string repeat "=" 43] End of Debug Info [string repeat "=" 43]"
+        puts $fd "$out"
+        puts "$out"
+        close $fd
+    }
+
+    gen_pack_slip perf
+    set dfmt "%-40s [string repeat "." 60] " 
+    puts "[format $dfmt "Overall Result"]$res"
+    return -code return $lst
+}
+
+proc zbridgeapp_config {} {
+
+    set sid $::sid($::dut)
+
+    # change user to root
+    write_info "changing user to root"
+    set ret [$::dut bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # send cli commands to dut object
+    foreach clicmd {"bivio-ifconfig -a s inet 0.0.0.0 up" "bivio-ifconfig map --defaults"} {
+        write_info "sending cli \"$clicmd\" to $::dut"
+        set ret [send_expect_pair $sid $clicmd $::prompt($::dut) "" 3 3]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    # start app
+    set applst "zbridgeapp"
+    write_info "Starting $applst"
+    set ret [$::dut bivio_nrsp_start $applst]
+    if { [problem_with $ret data] } {
+         write_error [data_from $ret]
+         return [list false [data_from $ret]]
+    }
+
+    write_info "Checking cpu states"
+    for {set i 0} {$i < 5} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            sleep 30
+            continue
+        } else {
+            break
+        }
+    }
+
+   # Check to see if app is running on all cpu
+    write_info "Checking $applst"
+    set ret [$::dut bivio_nrsp_running $applst]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+}
+
+proc bypass_config { {stat ""} } {
+
+    set ret [$::dut bivio_set_bypass forced]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+    return [list true [data_from $ret]]
+}
+
+# this is required for auto loading
+package provide MAN_TEST_001 1.0

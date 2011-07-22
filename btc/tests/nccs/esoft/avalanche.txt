@@ -1,0 +1,267 @@
+# Database Version
+# DB version number: 1256 
+# Start: Tue Apr  5 11:52:28 PDT 2011 - End: Tue Apr  5 11:52:42 PDT 2011
+####################################################################################################
+# AUTO - Categories: - 10 Compromised -
+1 get http://ibm6-antispyware.com
+# AUTO - Categories: - 11 Hate Speech -
+1 get http://democratsarestupid.org
+# MANUAL - Categories: - 12 Illegal Drugs 
+1 get http://hightimes.com/
+# AUTO - Categories: - 13 Phishing/Fraud - 20 Pharmacy - 114 R-Rated -
+1 get http://tabletslevitra.com
+# AUTO - Categories: - 15 Violence - 56 Child Abuse Images -
+1 get http://deadbabies.com
+# AUTO - Categories: - 16 Weapons -
+1 get http://glock.com
+# AUTO - Categories: - 17 Anonymizer - (More categories inside)
+1 get http://hidemyass.com
+# AUTO - Categories: - 18 Translator - (More categories inside)
+1 get http://translate.google.com
+# AUTO - Categories: - 19 Alcohol -
+1 get http://www.winespectator.com
+# AUTO - Categories: - 20 Pharmacy - 98 Online Shopping - (More categories inside)
+1 get http://drugstore.com
+# AUTO - Categories: - 21 Tobacco -
+1 get http://marlboro.com
+# AUTO - Categories: - 22 Gambling - (More categories inside)
+1 get http://fulltiltpoker.com
+# AUTO - Categories: - 23 Games - (More categories inside)
+1 get http://worldofwarcraft.com
+# AUTO - Categories: - 24 Dating - 69 Gay, Lesbian or Bisexual - 108 Pornography -
+1 get http://gaypoint.at
+# AUTO - Categories: - 25 Travel - (More categories inside)
+1 get http://travelocity.com
+# AUTO - Categories: - 26 Military - (More categories inside)
+1 get http://army.mil
+# AUTO - Categories: - 27 Humor - (More categories inside)
+1 get http://jokes.com
+# AUTO - Categories: - 28 Music - 134 Television & Movies - (More categories inside)
+1 get http://rollingstone.com
+# AUTO - Categories: - 29 News - 114 R-Rated - (More categories inside)
+1 get http://cosmopolitan.com
+# AUTO - Categories: - 30 Social Networking - (More categories inside)
+1 get http://facebook.com
+# AUTO - Categories: - 31 Web-based Email - (More categories inside)
+1 get http://hotmail.com
+# AUTO - Categories: - 32 Portal Sites - 84 Kid's Pages -
+1 get http://kidsclick.org
+# AUTO - Categories: - 33 Search Engines - (More categories inside)
+1 get http://google.com
+# AUTO - Categories: - 34 Online Ads - (More categories inside)
+1 get http://doubleclick.net
+# AUTO - Categories: - 35 Job Search - (More categories inside)
+1 get http://monster.com
+# AUTO - Categories: - 36 Real Estate - (More categories inside)
+1 get http://realtor.com
+# AUTO - Categories: - 37 Spam - 39 Parked -
+1 get http://shicai001.cn
+# AUTO - Categories: - 39 Parked - 108 Pornography -
+1 get http://www87.com
+# AUTO - Categories: - 40 Abortion - (More categories inside)
+1 get http://www.abortionfacts.com/
+# AUTO - Categories: - 41 Abortion - Pro Choice -
+1 get http://prochoiceamerica.org
+# AUTO - Categories: - 42 Abortion - Pro Life -
+1 get http://prolife.com
+# AUTO - Categories: - 43 Agriculture - (More categories inside)
+1 get http://www.agriculture.com
+# AUTO - Categories: - 44 Architecture & Construction - (More categories inside)
+1 get http://www.archenergy.com
+# AUTO - Categories: - 45 Arts - 98 Online Shopping -
+1 get http://www.art.com
+# AUTO - Categories: - 46 Astrology & Horoscopes - (More categories inside)
+1 get http://astrology.com
+# AUTO - Categories: - 47 Atheism & Agnosticism - (More categories inside)
+1 get http://atheists.org
+# AUTO - Categories: - 48 Auctions & Marketplaces - (More categories inside)
+1 get http://ebay.com
+# AUTO - Categories: - 49 Banking - (More categories inside)
+1 get http://citibank.com
+# AUTO - Categories: - 50 Biotechnology -
+1 get http://imclone.com
+# AUTO - Categories: - 52 Businesses & Services (General) -
+1 get http://xstrata.com
+# AUTO - Categories: - 53 Cartoons, Anime & Comic Books -
+1 get http://anime.com
+# AUTO - Categories: - 54 Catalogs -
+1 get http://catalogsfroma-z.com
+# AUTO - Categories: - 55 Chat -
+1 get http://chat-avenue.com
+# AUTO - Categories: - 58 Content Servers - (More categories inside)
+1 get http://akamai.com
+# AUTO - Categories: - 59 Contests & Surveys -
+1 get http://surveymonkey.com
+# AUTO - Categories: - 60 Coupons -
+1 get http://www.saveupcash.com/style/sidebar.css
+# AUTO - Categories: - 62 Educational Institutions - (More categories inside)
+1 get http://harvard.edu
+# AUTO - Categories: - 63 Educational Materials & Studies -
+1 get http://onlinelearning.net
+# AUTO - Categories: - 64 Entertainment News & Celebrity Sites - (More categories inside)
+1 get http://eonline.com
+# AUTO - Categories: - 65 Entertainment Venues & Events - (More categories inside)
+1 get http://kennedy-center.org
+# AUTO - Categories: - 67 File Repositories - 107 Piracy & Copyright Theft - 108 Pornography -
+1 get http://appzplanet.com
+# AUTO - Categories: - 68 Fitness & Recreation - 98 Online Shopping - (More categories inside)
+1 get http://yogasite.com
+# AUTO - Categories: - 70 Finance (General) -
+1 get http://dmfinancialplanning.com
+# AUTO - Categories: - 72 Government Sponsored - 109 Physical Security - (More categories inside)
+1 get http://fbi.gov
+# AUTO - Categories: - 73 Nature & Conservation -
+1 get http://thebetterbag.com
+# AUTO - Categories: - 75 Health & Medical - (More categories inside)
+1 get http://webmd.com
+# AUTO - Categories: - 76 Hobbies & Leisure - 98 Online Shopping - (More categories inside)
+1 get http://coinsdesigned.com
+# AUTO - Categories: - 77 Home, Garden & Family - (More categories inside)
+1 get http://marthastewart.com
+# AUTO - Categories: - 78 Home & Office Furnishings - 98 Online Shopping - (More categories inside)
+1 get http://ikea.com
+# AUTO - Categories: - 80 Information Security - (More categories inside)
+1 get http://sectools.org
+# AUTO - Categories: - 81 Instant Messenger - (More categories inside)
+1 get http://aim.com
+# AUTO - Categories: - 82 Insurance -
+1 get http://www.biztositas.us
+# AUTO - Categories: - 83 Internet Phone & VOIP - (More categories inside)
+1 get http://skype.com
+# AUTO - Categories: - 85 Lingerie, Suggestive & Pinup - 98 Online Shopping - (More categories inside)
+1 get http://www.everythingbutwater.com
+# AUTO - Categories: - 86 Literature & Books - 104 Pets & Animals - (More categories inside)
+1 get http://arabianhorsereading.com
+# AUTO - Categories: - 87 Login Screens -
+1 get http://discoverylearning.net
+# AUTO - Categories: - 89 Malware Distribution Point -
+1 get http://getwinalot.com
+# AUTO - Categories: - 90 Manufacturing -
+1 get http://mpmanufacturing.com
+# AUTO - Categories: - 91 Marijuana -
+1 get http://www.marijuana.com
+# AUTO - Categories: - 92 Mobile Phones - 113 Professional Networking -
+1 get http://inmobile.org
+# AUTO - Categories: - 94 Non-traditional Religion & Occult - (More categories inside)
+1 get http://www.scientology.org
+# AUTO - Categories: - 95 Nutrition & Diet - (More categories inside)
+1 get http://nutritiondata.com
+# AUTO - Categories: - 96 Online Financial Tools & Quotes -
+1 get http://www.mint.com
+# AUTO - Categories: - 97 Online Information Management - (More categories inside)
+1 get http://zoho.com
+# AUTO - Categories: - 98 Online Shopping - 112 Profanity -
+1 get http://fuckthiswebsite.com
+# AUTO - Categories: - 99 Online Stock Trading -
+1 get http://myfund.pl
+# AUTO - Categories: - 100 Parks, Rec Facilities & Gyms - (More categories inside)
+1 get http://sandiegozoo.org
+# AUTO - Categories: - 101 Pay To Surf - (More categories inside)
+1 get http://cashsurfers.com
+# AUTO - Categories: - 102 Peer-to-Peer -
+1 get http://www.imesh.com/favicon.ico
+# AUTO - Categories: - 103 Personal Storage -
+1 get http://rs129l34.rapidshare.com/files/24657789/mtbl.part05.rar
+# AUTO - Categories: - 104 Pets & Animals - (More categories inside)
+1 get http://petfinder.com
+# AUTO - Categories: - 105 Philanthropic Organizations -
+1 get http://redcross.org
+# AUTO - Categories: - 106 Photo Sharing - (More categories inside)
+1 get http://flickr.com
+# AUTO - Categories: - 107 Piracy & Copyright Theft - 135 Torrent Repository - (More categories inside)
+1 get http://thepiratebay.org
+# AUTO - Categories: - 108 Pornography -
+1 get http://penthouse.com
+# AUTO - Categories: - 109 Physical Security - (More categories inside)
+1 get http://blackwaterusa.com
+# MANUAL - Categories: - 110 Private IP Address -
+1 get http://192.168.1.1
+# AUTO - Categories: - 111 Product Reviews & Price Comparisons - (More categories inside)
+1 get http://consumerreports.org
+# AUTO - Categories: - 113 Professional Networking - (More categories inside)
+1 get http://linkedin.com
+# AUTO - Categories: - 115 Redirect -
+1 get http://irit.in
+# AUTO - Categories: - 116 Reference Materials & Maps - (More categories inside)
+1 get http://dictionary.com
+# AUTO - Categories: - 117 Religions -
+1 get http://clergyresources.net
+# AUTO - Categories: - 118 Retirement Homes & Assisted Living -
+1 get http://assistedlivinginfo.com
+# AUTO - Categories: - 119 School Cheating - (More categories inside)
+1 get http://solvemymath.com
+# AUTO - Categories: - 120 Self-help & Addiction - (More categories inside)
+1 get http://aa.org
+# AUTO - Categories: - 121 Sex & Erotic -
+1 get http://theeroticreader.com
+# AUTO - Categories: - 122 Sex Education & Pregnancy -
+1 get http://realsexedfacts.com
+# AUTO - Categories: - 123 Shipping & Logistics - 145 Motorized Vehicles -
+1 get http://autocarshippers.com
+# AUTO - Categories: - 124 Social and Affiliation Organizations -
+1 get http://ymca.org
+# AUTO - Categories: - 125 Software, Hardware & Electronics - (More categories inside)
+1 get http://dell.com
+# AUTO - Categories: - 126 Sport Hunting -
+1 get http://huntingsociety.org
+# AUTO - Categories: - 127 Sports -
+1 get http://soccerfieldsofcolorado.com
+# AUTO - Categories: - 128 Spyware & Questionable Software -
+1 get http://playerxtra.com
+# AUTO - Categories: - 129 Streaming & Downloadable Audio - (More categories inside)
+1 get http://shoutcast.com
+# AUTO - Categories: - 130 Streaming & Downloadable Video - (More categories inside)
+1 get http://youtube.com
+# AUTO - Categories: - 131 Supplements & Compounds -
+1 get http://bioplexkorea.com
+# AUTO - Categories: - 132 Swimsuits -
+1 get http://swimwearboutique.com
+# AUTO - Categories: - 133 Child Inappropriate - (More categories inside)
+1 get http://suicide.com
+# AUTO - Categories: - 134 Television & Movies - (More categories inside)
+1 get http://imdb.com
+# AUTO - Categories: - 136 Toys - (More categories inside)
+1 get http://toysrus.com
+# AUTO - Categories: - 138 Web Hosting, ISP & Telco - (More categories inside)
+1 get http://comcast.com
+# AUTO - Categories: - 139 Web-based Greeting Cards - (More categories inside)
+1 get http://hallmark.com
+# AUTO - Categories: - 140 Wikis - (More categories inside)
+1 get http://daviswiki.org
+# AUTO - Categories: - 141 Image Search - (More categories inside)
+1 get http://www.picsearch.com
+# AUTO - Categories: - 143 Remote Access -
+1 get http://gotomypc.com
+# AUTO - Categories: - 144 Marketing Services - (More categories inside)
+1 get http://brandrepublic.com
+# AUTO - Categories: - 146 Food & Restaurants -
+1 get http://crowncookware.ca
+# AUTO - Categories: - 147 Legislation, Politics & Law -
+1 get http://nuovacolombia.net
+# AUTO - Categories: - 149 Sport Fighting -
+1 get http://judoinfo.com
+# AUTO - Categories: - 150 Text Messaging & SMS -
+1 get http://onlinetextmessage.com
+####################################################################################################
+# Catagories - 14 Missing
+# Catagories - 38 Missing
+# Catagories - 51 Missing
+# Catagories - 56 Missing
+# Catagories - 57 Missing
+# Catagories - 61 Missing
+# Catagories - 66 Missing
+# Catagories - 69 Missing
+# Catagories - 71 Missing
+# Catagories - 74 Missing
+# Catagories - 79 Missing
+# Catagories - 84 Missing
+# Catagories - 88 Missing
+# Catagories - 93 Missing
+# Catagories - 112 Missing
+# Catagories - 114 Missing
+# Catagories - 135 Missing
+# Catagories - 137 Missing
+# Catagories - 142 Missing
+# Catagories - 145 Missing
+# Catagories - 148 Missing
+####################################################################################################

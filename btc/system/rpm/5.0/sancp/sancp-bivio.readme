@@ -1,0 +1,63 @@
+=========================================
+Sancp For The Bivio 2000 Series
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+SANCP is a network security tool designed to collect statistical information 
+regarding network traffic, as well as, record the traffic itself to file in 
+pcap format for the purpose of: auditing, historical analysis, and network 
+activity discovery. Rules can be used to distinguish normal traffic from 
+abnormal traffic and support tagging connections with: rule id, node id, and status id.
+
+From an intrusion detection standpoint, every connection is an event that must be
+validated through some means. SANCP uses rules to identify, record, and tag traffic of 
+interest.  Connection 'stats' can be loaded into a database for further analysis.
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+Log and packet captures are stored under each respecive 
+cpu's directory. (ie /nr/shared/cpus/CPU-#)
+
+
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+
+1. Install the sancp RPM
+
+    rpm -Uvh sancp-1.6.1-1.B2000.ppc.rpm
+
+2. Configure Bro to run permenantly
+
+    appinst -i sancp 
+
+
+
+
+-----------------------------------------
+Configuration (optional)
+-----------------------------------------
+
+
+1. The sancp configuration file can be edited for desired runtime behavior and options
+
+    vi /etc/sancp/sancp.conf
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start sancp running on the application CPU's
+
+        nrsp start sancp 
+
+

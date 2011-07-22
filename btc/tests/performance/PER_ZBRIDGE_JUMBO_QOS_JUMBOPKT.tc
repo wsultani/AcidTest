@@ -1,0 +1,43 @@
+#!/usr/bin/expect --
+
+proc PER_ZBRIDGE_JUMBO_QOS_JUMBOPKT {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {testcase}
+set ${p}(Description)   {Performance test with zbridge cfg and jumbo and QOS enabled with jumbo pkts}
+set ${p}(Suite)         {performance_common}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {dut smb {Slot0(port)}}
+set ${p}(Created)       {10-01-04}
+set ${p}(EOL)           {}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require performance
+
+    ###########################################################
+    # User defined values
+    ###########################################################
+
+    array set cfg ""
+
+    set cfg(cfglst) {zbridgeapp}
+    set cfg(ftest) "1"
+    set cfg(qos) on
+    set cfg(sbypass) off
+    set cfg(jumbo) on
+    set cfg(cpu) "All"
+    set cfg(testtime) 60
+    set cfg(framesize) {2000:9000:1000 9600}
+
+    ###########################################################
+    # End of user defined values
+    ###########################################################
+
+    lreturn [perf_common_body cfg]
+}
+
+# this is required for auto loading
+package provide PER_ZBRIDGE_JUMBO_QOS_JUMBOPKT 1.0

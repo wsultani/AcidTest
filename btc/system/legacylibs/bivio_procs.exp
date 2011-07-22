@@ -1,0 +1,516 @@
+#! /usr/bin/expect --
+#
+
+#
+# Layer 2 proc. Telnet to a host. Calls telnet_custom_prompt and does error catching
+# and acts appropriately
+#
+proc telnet_tohost {dut_ip username password prompt} {
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     while 1 {
+          dbug "Attempting telnet to $dut_ip"
+          if [catch {telnet_custom_prompt $dut_ip $username $password $prompt}\
+          spawn_id] {
+               dbug "Telnet failed. Attempting to ssh instead."
+               if [catch {ssh_custom_prompt $dut_ip $username $password $prompt}\
+               spawn_id] {
+                    dbug "Unable to connect via telnet nor ssh." 
+                    dbug "Aborting execution of all tests."
+                    close_logs
+                    exit 1
+               } else {
+                    dbug "ssh succeeded so check if telnet is enabled."
+                    if { [check_telnet_enabled $spawn_id] } {
+                         dbug "Telnet is not enabled. Attempting to enable telnet."
+                         enable_bivio_telnet $spawn_id
+                         dbug "Telnet is enabled now so end ssh."
+                         exp_close
+                         wait -i $spawn_id
+                         dbug "Ssh terminated gracefully. Re-try telnet.."
+                         sleep 5
+                         continue
+                    } else {
+                         dbug "Telnet is apparently enabled but we failed connecting earlier."
+                         dbug "Maybe edit \/etc\/pam.d\/login\?"
+                         close_logs
+                         exit 1
+                    } ;# if check telnet enabled
+               } ;# if catch ssh
+          } else {
+               dbug "Telnet succeeded..moving on."
+               break
+          } ;# if catch telnet
+     } ;# while
+
+     dbug "EXIT <$proc_name>"
+     return $spawn_id
+
+} ;# proc
+
+
+#
+# Layer 2 proc. Ssh to a host. Calls ssh_custom_prompt and does error catching
+# and acts appropriately
+#
+proc ssh_tohost {dut_ip username password prompt} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     dbug "Attempting ssh to $dut_ip"
+     if [catch {ssh_custom_prompt $dut_ip $username $password $prompt} spawn_id] {
+          dbug "Unable to connect via ssh."
+          dbug "Aborting execution of all tests."
+          close_logs
+          exit 1
+     } else {
+          dbug "Ssh to $dut_ip succeeded."
+     } ;# if catch ssh
+
+     dbug "EXIT <$proc_name>"
+     return $spawn_id
+
+} ;# proc
+
+
+proc spy_sh_mode {spawn_id expectation} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id
+
+     set command "spy.sh mode"
+     log "Sent <$command>"
+     if [catch {send_command $spawn_id $command $expectation} result] {
+          log "Did not see <$expectation>"
+          log "Instead saw <$result>"
+          if {[string match "Mode is Mixed" $expectation]} {
+               set expectation "Mode is Transparent"
+          } else {
+               set expectation "Mode is Mixed"
+          }
+          log "Maybe $expectation? Re-sent <$command>"
+          puts "\nMaybe $expectation? Re-sent <$command>"
+          if [catch {send_command $spawn_id $command $expectation} result] {
+               log "Neither did I see <$expectation>"
+               log "Instead saw <$result>"
+               puts "\nspy.sh mode is neither Mixed nor Transparent"
+               error "spy.sh mode is neither Mixed nor Transparent"
+          } else {
+               log "Saw <$expectation>"
+          } ;# if spy.sh mode transparent
+     } else {
+          log "Saw <$expectation>"
+     } ;# if spy.sh mode mixed
+
+     dbug "EXIT <$proc_name>"
+     return 
+
+} ;# proc
+
+
+proc reset_pm_port {tserv_ip tserv_port \
+     {username !root} \
+     {password cosmo} \
+     {prompt {(.+)-console(.*)>}} \
+     } { 
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     set spawn_id [telnet_custom_prompt $tserv_ip $username $password $prompt]
+     while 1 {
+          expect {
+               -re $prompt {
+                    sleep 1
+                    send "reset s$tserv_port\r"
+                    break
+               }
+               -timeout 3 timeout {
+                    dbug "$proc_name: Timeout waiting for <$prompt>"
+                    dbug "$proc_name: Re-send cr\/lf"
+                    send -i $spawn_id "\r"
+                    continue
+               }
+          }
+     } ;# while
+
+     # try to get the prompt again
+     get_prompt $spawn_id $prompt
+
+     # make sure this telnet proc is done before proceeding
+     exp_close ; wait -i $spawn_id
+     log "$proc_name: Reset s$tserv_port is done"
+
+     dbug "EXIT <$proc_name>"
+} ;# proc
+
+
+proc tip_dut {tserv_ip tserv_port\
+{username !root} {password cosmo} {prompt sqa-console>}\
+} {
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+
+     #########################################################################
+     # we're going to
+     # (1) seize control of the console by bouncing the particular port master port
+     # (2) telnet to the same port master port and login accordingly
+     #########################################################################
+     # step (1)
+     reset_pm_port $tserv_ip $tserv_port
+
+     # step (2)
+     set tserv_port [expr $tserv_port + 5000]
+     set prompt {[$#>]}
+     set spawn_id [telnet_custom_prompt $tserv_ip $tserv_port root root $prompt]
+# todo get the actual prompt and react accordingly
+# plan is to put this functionality to get_prompt
+#     set prompt [get_prompt $spawn_id]
+     set msg "$proc_name: Connected to $tserv_ip $tserv_port\n"
+     log $msg
+     send_user $msg
+
+     dbug "EXIT <$proc_name>"
+     return $spawn_id
+} ;# proc tip_proc
+
+
+proc reboot_bivio {spawn_id} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id
+
+     # reboot the DUT
+     sleep 1 ; send "sync\r"
+     sleep 1 ; send "sync\r"
+     
+     # Now, reboot
+     sleep 1 ; send "reboot\r"
+     while 1 {
+             expect {
+                     -ex "Seconds Remaining until Auto Boot" {
+                             sleep 1 ; send "\s" 
+                             # sent space
+                     }
+                     -ex "Press \'I\' to enter interactive startup" {
+                             sleep 1 ; send "\e" 
+                             # sent escape
+                     }
+                     -ex "CPU-X login:" {
+                             dbug "$proc_name: Saw the login prompt."
+                             break
+                     }
+                     -timeout 30 timeout {
+                             dbug "$proc_name: Waiting for login prompt."
+                             puts "\n$proc_name: Waiting for login prompt.\n"
+                     }
+             } ;# expect
+     } ;# while
+
+     dbug "EXIT <$proc_name>"
+
+} ;# proc
+
+
+proc nrsp_reset_all {spawn_id} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id
+
+     # reset all APC cpus
+     send_command $spawn_id "nrsp reset all"\
+          {Hard reset of all CPU's is now in progress}
+     get_prompt $spawn_id {(.*)CPU-X(.*)[#$]}
+     
+     set elapsedt 0
+     set allowedt 90
+     while {$elapsedt < $allowedt} {
+          # nrsp list 
+          set ret_list [ send_command $spawn_id "nrsp list" {(.*)CPU-X(.*)[#$]} ]
+
+          set countd 0
+          set cpu_statel {}
+          # populate the cpu-state list with each cpu's state
+          foreach element $ret_list {
+               if {[regexp {^CPU-[1-9][0-9]*} $element]} {
+                    # this element is "CPU-n"; next element is this cpu's state
+                    set cpu_state [lindex $ret_list [expr {$countd + 1}] ]
+                    # now append this cpu-state to our cpu-state-list
+                    lappend cpu_statel $cpu_state
+               } ;# if
+               incr countd                
+          } ;# foreach
+          
+          # now that cpu-state list is built, check each member to see if "active"
+          set countd 1
+          set all_active 1 ;# initialize our flag
+          log "$proc_name: Displaying CPU state for:"
+          foreach element $cpu_statel {
+               if {![string match $element "Active"]} {
+                    set all_active 0 ;# so not all CPU recovered--change flag
+               } ;# if
+               log "CPU\-$countd \t $element"
+               incr countd
+          } ;# foreach
+
+          #
+          if {[set all_active]} {
+               dbug "EXIT <$proc_name>"
+               return $cpu_statel
+          } else {
+               set elapsedt [incr elapsedt 10]   
+               sleep 10  
+          } ;# if 
+     } ;# while   
+     
+     # it's been pass $allowedt (sec.) and one of the CPUs is not active still.
+     # return the CPU list and let the calling proc figure out what to do
+     dbug "EXIT <$proc_name>"
+     error $cpu_statel
+
+} ;# proc
+
+
+proc spy_sh_s {spawn_id} {
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id
+
+     # reset EL load balancing 
+     set prompt {(.*)CPU-X(.*)[#$]}
+     send_command $spawn_id "spy.sh reset-lb" $prompt 
+     send_command $spawn_id "spy.sh c" $prompt
+     # and then issue command: spy.sh s
+     set ret_list [send_command $spawn_id "spy.sh s" $prompt ]
+     
+     set countd 0
+     set cpu_counterl {}
+     # get the counter value for each CPU and build the cpu_counter list
+     foreach element $ret_list {
+          if { [ string match $element "CPU" ] } {
+               #
+               # add the right offset to countd to reach the needed element: 
+               #
+               # CPU  1               5371
+               # CPU  2               5370
+	       # ^    ^               ^
+               # 0    +1              +2
+               #
+               # cpu_num       => [lindex $ret_list [expr {$countd + 1}] ]
+               # cpu_rxcounter => [lindex $ret_list [expr {$countd + 2}] ]
+               lappend cpu_counterl [lindex $ret_list [expr {$countd + 1} ] ]
+               lappend cpu_counterl [lindex $ret_list [expr {$countd + 2} ] ]
+          } ;# if 
+          incr countd
+     } ;# foreach
+
+     # now that cpu_count list is built, echo and then return cpu_rxcount list
+     # to the calling proc
+     set countd 1    ;# countd is our reference for counting CPUs 
+     set all_pass_traffic 1   ;# initialize our flag
+     log "$proc_name: Displaying RX counters for:\n"
+     for {set i 0} {$i <= [expr [llength $cpu_counterl] - 2]} {incr i 2} {
+          set cpu_num [lindex $cpu_counterl $i]
+          log "CPU\-$cpu_num \t [lindex $cpu_counterl [expr $i + 1]]"
+          # is the cpu# consecutive?
+          if {($countd != $cpu_num)} {
+               log "ALERT: CPU# was not consecutive."
+               puts "ALERT: CPU# was not consecutive."
+               set all_pass_traffic 0   ;# not all cpus are busy afterall
+               # make the counters equal again so we can detect next discrepancy
+               set countd $cpu_num
+          }  
+          if {$cpu_num == 6} {
+               set countd 1
+          } else {
+               incr countd
+          } ;# if
+     } ;# for
+     
+     if {$all_pass_traffic} {
+          dbug "EXIT <$proc_name>"
+          return $cpu_counterl
+     } else {
+          log "Will error out so the calling proc can catch this if it cares."
+          dbug "EXIT <$proc_name>"
+          error $cpu_counterl
+     } ;# if-else
+
+} ;# proc
+
+
+#
+# scp source-file to dest-file while checking if file transfer is stuck/bursty
+#
+proc scp_file {spawn_id sfname dfname password} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id 
+
+     while 1 {
+          if [catch {send_command $spawn_id "scp $sfname $dfname" {password:}} ] {
+               log "$proc_name: timeout waiting for password prompt"
+               log "$proc_name: restarting scp.."
+               exp_send "$CTRL_C" ; sleep 1
+               exp_send "$CTRL_C"
+               continue
+          } else {
+               break 
+          } ;# if
+     } ;# while 
+
+     while 1 {
+          exp_send "$password\r"
+          dbug "$proc_name: sent the PC password"
+          expect {
+               -re {(.*)%(.*)B/s} {break}
+               -re {password:} {
+                    log "$proc_name: saw "password:". Re-input the password."
+                    continue
+               }
+               -timeout 3 timeout {
+                    log "$proc_name: Did not see start of scp"
+                    expect -re {.*}
+                    log "$proc_name: Instead, saw <$expect_out(buffer)>"
+                    # maybe the file transfer hanged
+                    dbug "EXIT <$proc_name>"
+                    error "$proc_name: File transfer did not start."
+               }
+          } ;# expect
+     } ;# while
+
+     while 1 {
+          expect {
+               -re {[^\d][\d]{1,2}%(.*)B/s} {
+                    log "$proc_name: Saw <$expect_out(0,string)>"
+                    continue
+               }
+               -re {100%(.*)B/s} {
+                    log "$proc_name: Saw <$expect_out(0,string)>"
+                    break
+               }
+               -timeout 10 timeout {  
+                    # maybe the file transfer hanged
+                    dbug "EXIT <$proc_name>"
+                    error "$proc_name: File transfer did not complete and is stuck."
+               }
+          } ;# expect
+     } ;# while
+
+     # file transfer is done 
+     dbug "EXIT <$proc_name>"
+
+} ;# proc 
+
+
+#
+# compares two files and errors if they are different
+#
+proc compare_files {spawn_id first_fn second_fn} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id 
+
+     expect * ;# flush expect buffer
+     exp_send "cmp $first_fn $second_fn\r"
+     expect {
+          -ex "differ" {
+               log "$proc_name: files differ"
+               dbug "EXIT <$proc_name>"
+               error "$first_fn differ from $second_fn"
+          }
+          -timeout 5 timeout {
+               # we did not see the word "differ" so files must be identical
+               dbug "$proc_name: files are identical"
+               # but display the expect buffer anyway
+               expect *
+               dbug "$proc_name: saw <$expect_out(buffer)>"
+               dbug "EXIT <$proc_name>"
+               return
+          }
+     } ;# expect
+
+} ;# proc
+
+
+#
+# clears dmesg log (twice) and returns nothing
+#
+proc clear_dmesg {spawn_id} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id 
+
+     exp_send "dmesg -c\r"
+     sleep 1
+     exp_send "dmesg -c\r" ;# just to be sure
+
+     dbug "EXIT <$proc_name>"
+
+} ;# proc
+
+
+# 
+# checks dmesg log for 
+# (1) known strings 
+# (2) optional user defined string(s)
+#
+# and errors if found
+#
+proc check_dmesg {spawn_id args} {
+
+     set proc_name [lindex [info level 0] 0]
+     dbug "ENTER <$proc_name>"
+     set spawn_id $spawn_id 
+
+     set errorl {\
+          {(.*)Oops:(.*)}\
+          {slot[0-9]:cpu[0-9](.*)Call backtrace}\
+          {mccp(.*)bad(.*)SOP}\
+          {ERROR(.*)}\
+     }
+     dbug "Defined errors to check"
+
+     # append args to the errorlist
+     set errorl [concat $errorl $args]
+     dbug "Added the arguments passed"
+
+     expect "*" ;# clear the expect buffer
+     exp_send "dmesg\r"
+     dbug "Sent dmesg command"
+
+     set err_flag 0
+     foreach element $errorl {
+          expect {
+               -re $element {
+                    # this error message is in dmesg. Print it
+                    puts "\ndmesg Error: <$expect_out(0,string)>"
+                    log "dmesg Error: <$expect_out(0,string)>"
+                    set err_flag 1
+               }
+               -timeout 2 timeout {
+                    dbug "Did not see <$element>"
+                    # no match so try next element
+                    continue
+               }
+          } ;# expect
+     } ;# foreach
+
+     if {$err_flag} {
+          # there is at least one error found
+          dbug "EXIT <$proc_name>"
+          error "Found dmesg Error(s)"
+     } ;# if
+
+     dbug "EXIT <$proc_name>"
+
+} ;# proc
+

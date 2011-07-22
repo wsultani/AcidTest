@@ -1,0 +1,101 @@
+#!/usr/bin/expect --
+
+proc CLI_SET {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)   {Use the "set" CLI to configure features, then verify that the cli is successfully applied}
+set ${p}(Suite)		{cli}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut sys_info}
+set ${p}(Created)	{08-10-29}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+
+    # get the BTC input array.
+    upvar marray marr
+   
+    set ref_data "tests/cli/[namespace tail [lindex [info level 0] 0]].data"
+
+    set ret [$::dut bivio_change_user admin root {\[admin:\]>}]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    source $ref_data
+
+    foreach cmd [lsort [array names CLI]] {
+
+        # do not compare the Header info.
+        if { $cmd == "Header" } {
+            continue
+        }
+
+        start_subtest "$cmd"
+        set res [list true ""]
+
+        for {set x 0} {$x < [llength $CLI($cmd)]} {incr x} {
+            set chk [lindex $CLI($cmd) $x]
+            if { [llength $chk] >= 3 } {
+
+                set user [lindex $chk 0] 
+                set ver_cmd [lindex $chk 1] 
+                set ver_exp [lindex $chk 2]
+
+                switch $user {
+                    "root" {
+                        write_step "changing user to \"$user\""
+                        set ret [$::dut bivio_change_user root root "@?CPU-X:?"]
+                        if { [problem_with $ret data] } {
+                            write_error [data_from $ret]
+                            set res [list false [data_from $ret]]
+                            break
+                        }
+                    }
+
+                    "admin" {
+                        write_step "changing user to \"$user\""
+                        set ret [$::dut bivio_change_user admin root {\[admin:\]>}]
+                        if { [problem_with $ret data] } {
+                            write_error [data_from $ret]
+                            set res [list false [data_from $ret]]
+                            break
+                        }
+                    }
+
+                    default {
+                        write_step "Changing to config \"$user\" mode"
+                        set ret [$::dut bivio_configure $user ""]
+                        if { [problem_with $ret] } {
+                            write_error [data_from $ret]
+                            set res [list false [data_from $ret]]
+                            break
+                        }
+                    }
+                }
+
+                write_step "Executing \"$ver_cmd\""
+                set ret [send_expect_pair $sid $ver_cmd $ver_exp "$::prompt($::dut)" 2 5]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    set res [list false [data_from $ret]]
+                    break
+                }
+            } else {
+                set msg "Incorrect data format: $CLI($cmd)"
+                write_error $msg
+                set res [list false [data_from $ret]]
+                break
+            }
+        }
+        end_subtest "$res"
+    }
+
+    return [analyze_subtest]
+}
+# this is required for auto loading
+package provide CLI_SET 1.0

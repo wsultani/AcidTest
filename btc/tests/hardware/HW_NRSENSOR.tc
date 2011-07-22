@@ -1,0 +1,106 @@
+#!/usr/bin/expect --
+
+proc HW_NRSENSOR {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Run the nrsensors cmd and look for a zero value. If found fail test, else pass}
+set ${p}(Suite)		{hardware}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{::dut}
+set ${p}(Created)	{08-06-27}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set con_type console
+
+    # the following bit of code allows the user to run this test 
+    # from an ssh connection as appose to the console connection.
+    if { $con_type == "ssh" } {
+        if { [::itcl::find objects ::loc_obj] == "" } {
+            # get the testbed connection info
+            upvar bv bv
+
+            set bv(Connection) ssh
+
+            # create the bivio object with ssh connection
+            set ret [eval $bv(Class) loc_obj $bv(IPAddress) \
+                $bv(Login) $bv(Password) $bv(Console) \
+                $bv(Port) $bv(Connection) $bv(Platform)]
+        }
+        set lobj "::$ret"
+    } else {
+        set lobj $::dut
+    }
+
+    set sid $::sid($lobj)
+    set prompt $::prompt($lobj)
+    set gerr 0
+    set loop 1
+
+    write_step "changing user to root"
+    set ret [$lobj bivio_change_user root root {@?CPU-X:?}]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    for {set x 1} {$x <= $loop} {incr x} {
+
+        write_debug "Loop $x of $loop"
+
+        set bv_cmd "nrsensors"
+        set exp "$bv_cmd.*CPU-.*$prompt"
+
+        write_step "Checking nrsensor readings"
+        set ret [send_expect_pair $sid $bv_cmd $exp $prompt 3 3]
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            if { $con_type == "ssh" } {
+                ::itcl::delete object $lobj
+            }
+            return [list false [data_from $ret]]
+        }
+
+        set err 0
+        set count 0
+        set errlst ""
+        set data [data_from $ret]
+
+        foreach line [split $data \n] {
+            if { [regexp {\d+\..*Value: (\S+)} $line match val] } {
+                incr count
+                if { $val == "0" } {
+                    lappend errlst $line
+                    incr err 
+                }
+            }
+        }
+
+        if { $err > 0 } {
+            incr gerr $err
+            write_error "zero values detected on $err sensors - \n[join $errlst \n]"
+        } else {
+            write_info "No zero values detected on $count sensors"
+        }
+    }
+
+    if { $gerr > 0 } {
+        write_error "Incorrect (zero) value obsereved $gerr times"
+        if { $con_type == "ssh" } {
+            ::itcl::delete object $lobj
+        }
+        return [list false [join $errlst \n]]
+    }
+
+    if { $con_type == "ssh" } {
+        ::itcl::delete object $lobj
+    }
+
+    return [list true [data_from $ret]]
+}
+# this is required for auto loading
+package provide HW_NRSENSOR 1.0

@@ -1,0 +1,385 @@
+proc check_results { data } {
+    foreach line [split $data "\n"] {
+        if { [regexp {([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)} \
+                                $line match pkt thru rxm rxf dup lost] } {
+            if { $thru == 0 } {
+                write_error "Throughput for PktSize $pkt is $thru - \n$line"
+                return [list false "$line"]
+            }
+        }
+    }
+    return [list true "$data"]
+}
+
+proc archive_sai_files { src dst } {
+    # calling proc name
+    set cproc [lindex [info level [expr [info level] - 2]] 0]
+
+    set flst ""
+    foreach sf $src {
+        lappend flst [glob $sf]
+    }
+
+    set flst [eval concat $flst]
+
+    # rename the files with testcase info for unique id.
+    foreach f $flst {
+        set root [file rootname $f]
+        set ext [file extension $f]
+        set nfile "$cproc$ext"
+
+        # rename_file also moves the file to target dir
+        set ret [copy_file $f [file join $dst [file tail $nfile]]]
+        if { [problem_with $ret] } {
+            write_warning "Unable to rename $f"
+            return [list false "Unable to rename $f"]
+        }
+
+        if { $ext == "\.csv" } {
+            write_info "<a href=\"http://[exec hostname]/automation/web/web2.0/csv2html.php?csvfile=[file join $dst [file tail $nfile]]\">View $cproc csv totals only</a>\n\n<a href=\"[file tail $nfile]\">View $cproc raw csv</a>"
+        }
+    }
+
+    return [list true ""]
+}
+
+proc run_sai_test { sai flow } {
+
+    set smb_mode remote
+
+    set localdir [pwd]
+
+    # Need to make a temp dir. this is required for smartbits scripts.
+    set ret [mk_dir "temp"]
+    if { [problem_with $ret] } {
+        write_error "[data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    if { $smb_mode == "remote" } {
+
+        set sid $::sid($::smbserver)
+
+        set cmd "cd $localdir"
+        set exp ""
+
+        set ret [send_expect_pair $sid $cmd $exp "$::prompt($::smbserver)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        set cmd "smbapi $sai $flow"
+        set exp "Checking firmware version"
+
+        set ret [send_expect_pair $sid $cmd $exp "$::prompt($::smbserver)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        while {1} {
+            set cmd ""
+            set exp "$::prompt($::smbserver)"
+
+            set ret [send_expect_pair $sid $cmd $exp "" 1 10]
+            if { [problem_with $ret] } {
+                continue
+            }
+
+            if { [regexp {ERROR|EXITING} [data_from $ret] match] } {
+                write_error "Failed to run $sai :\n [data_from $ret]"
+                return [list false [data_from $ret]]
+            }
+
+            break
+        }
+
+    } else {
+
+        # reset the error code
+        set ::errorInfo ""
+        set ::errorCode "NONE"
+
+        write_debug "Running $sai $flow"
+        if { $::verbose > 1 } {
+            set stat [catch "exec smbapi $sai $flow >@stdout" ret ]
+        } else {
+            set stat [catch "exec smbapi $sai $flow" ret ]
+        }
+
+        if { ![string equal $::errorCode NONE] } {
+            set ecode "[lindex $::errorCode 0]"
+            set einfo "$::errorInfo"
+            write_error "$sai $flow exited with errorcode $ecode\n$einfo"
+            return [list false "$ecode"]
+        }
+    }
+
+    return [list true "[lindex $::errorCode 0]"]
+}
+
+proc setPerfHeader { sai flow } {
+
+    set data ""
+    set fmt {%-20s %-20s}
+
+    set ttype [getFlowInfo $sai $flow testtype]
+    append data "[format $fmt {TestType} "$ttype"]\n"
+
+    if { $ttype == "THRUPUT" } {
+
+        set ver [data_from [$::dut bivio_show_version]]
+        append data "[format $fmt Build "$ver"]\n"
+
+        set duration [getFlowInfo $sai $flow testtime]
+        append data "[format $fmt Duration "$duration seconds"]\n"
+        append data "[format $fmt {Search Type} "Binary Search"]\n"
+
+        set thruinfo [getDefaultInfo $sai thruputSMMR]
+        if { $thruinfo != "" } {
+            if { [regexp {([\d.]+):([\d.]+):([\d.]+):([\d.]+)} $thruinfo match start min max res] } {
+                append data "[format $fmt {Initail Rate} "[expr round($start)]%"]\n"
+                append data "[format $fmt {Minimum Rate} "[expr round($min)]%"]\n"
+                append data "[format $fmt {Maximum Rate} "[expr round($max)]%"]\n"
+                append data "[format $fmt {Resolution} "[expr round($res)]%"]\n"
+            }
+        }
+
+        set loss [getDefaultInfo $sai definethruput]
+        append data "[format $fmt {Acceptable Loss} "[expr round($loss)]%"]\n"
+    }
+    
+    append data "[format $fmt {Mode} "Inline Mode"]\n"
+    append data "[format $fmt {Traffic} "Bidirectional"]\n"
+
+    append data "[format $fmt {Flows} [exec cat $sai | grep node | wc -l]]\n"
+
+    set doonce 0
+    foreach line [split [data_from [$::dut bivio_port_map]] \n] {
+        if { $doonce != 1 } { 
+            append data "[format $fmt {Port Mapping} "$line"]\n"
+            set doonce 1
+        } else {
+            append data "[format $fmt "" "$line"]\n"
+        }
+    }
+
+    return $data
+}
+
+proc perf_common_body { cfgarr } {
+
+    package require sai_report
+    package require config
+
+    set ret [get_slot_info Slot0]
+    if { [problem_with $ret] } {
+        write_error "Unable to get Slot0 info - [data_from $ret]"
+        return $ret
+    }
+    set pcount [lindex [data_from $ret] 0]
+    set speed [lindex [data_from $ret] 1]
+
+    set ret [get_slot_info Slot1]
+    if { [problem_with $ret] } {
+        write_warning "Unable to get Slot1 info - [data_from $ret]"
+    } else {
+        set pcount "${pcount}x[lindex [data_from $ret] 0]"
+        set speed "${speed}x[lindex [data_from $ret] 1]"
+    }
+
+    set speed [regsub -all "000" $speed "G"]
+
+    set saifile "Perf_${pcount}Port_${speed}.sai"
+
+    # get the testbed specific config
+    upvar $cfgarr tccfg
+
+    set cfglst $tccfg(cfglst)
+    set ftest $tccfg(ftest)
+    set qos $tccfg(qos)
+    set sbypass $tccfg(sbypass)
+    set jumbo $tccfg(jumbo)
+    set cpu $tccfg(cpu)
+    set testtime $tccfg(testtime)
+    set framesize $tccfg(framesize)
+
+    if { $cpu == "All" } {
+        set cpulst $::sys_info(CPUNet)
+    } else {
+        for {set x 1} {$x <= $cpu} {incr x} {
+            lappend cpulst $x
+        }
+    }
+
+    set email "btc-performance@bivio.net"
+    set ver [data_from [$::dut bivio_show_version]]
+
+    global env
+
+    # set up the environment required by smartbits.
+    set env(LD_LIBRARY_PATH) "/usr/local/smartbits/SmartBitsAPI/bin"
+    set env(PATH) "$env(PATH):/usr/local/smartbits/SmartBitsAPI/bin"
+
+    # save the location of the current working dir
+    set restore [pwd]
+
+    # set the timestamp
+    set date [clock format [clock seconds] -format %Y%m%d]
+    set tstamp [clock format [clock seconds] -format %H%M%S]
+
+    set testdir [file join "$::smb(dir)" "$date-$tstamp"]
+
+    # Need to make a tmp dir. The sai file will run from here.
+    set ret [mk_dir "$testdir"]
+    if { [problem_with $ret] } {
+        write_error "Unable to make dir $testdir - [data_from $ret]"
+        return $ret
+    }
+
+    # change to the test dir
+    if { [catch "cd $testdir" err] } {
+        write_error "could not cd to $tcdir - $err"
+        return [list false "$err"]
+    }
+
+    set report ""
+
+    foreach cfg $cfglst {
+
+        write_step "Loading default config"
+        set ret [default_config]
+        if { [problem_with $ret] } {
+            return $ret
+        }
+
+        write_step "Loading $cfg config"
+        set ret [${cfg}_config]
+        if { [problem_with $ret] } {
+            return $ret
+        }
+
+        write_step "Setting QOS $qos"
+        set ret [QOS_config $qos]
+        if { [problem_with $ret] } {
+            return $ret
+        }
+
+        write_step "Setting softbypass to $sbypass"
+        set ret [softbypass_config $sbypass]
+        if { [problem_with $ret] } {
+            return $ret
+        }
+
+        write_step "Setting Jumbo to $jumbo"
+        set ret [$::dut bivio_config_jumbo $jumbo]
+        if { [problem_with $ret] } {
+            return $ret
+        }
+
+        ###############################################
+        sleep 5
+        set cmd "show_stats -a"
+        set exp "$cmd.*$::prompt($::dut)"
+
+        set ret [send_expect_pair $::sid($::dut) $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+        sleep 5
+        ###############################################
+
+        foreach ncpu $cpulst {
+
+            set subject "$ncpu CPU - $pcount Port ${speed}Mb $cfg QoS $qos Jumbo $jumbo Sbypass $sbypass - [lindex $ver 0]"
+
+            set ret [generate_sai $ncpu $framesize $testtime "$saifile"]
+            if { [problem_with $ret] } {
+                return $ret
+            }
+
+            if { ![file exists $saifile] } {
+                write_error "$saifile does not exist"
+                return [list false "$saifile does not exist"]
+            }
+
+            set filename [getFlowInfo $saifile $ftest reportfilename]
+            set tname [file rootname [file tail $filename]]
+
+            write_step "Running $tname with $cfg..."
+
+            array set pinfo ""
+            set pinfo(Port) "$pcount"
+            set pinfo(Qos) "$qos"
+            set pinfo(CPU) "$ncpu"
+            set pinfo(CFG) "$cfg"
+            set pinfo(Jumbo) "$jumbo"
+            set pinfo(Speed) "$speed"
+            set pinfo(Sbypass) "$sbypass"
+            set pinfo(Platform) "$::sys_info(Product)"
+
+            set ret [run_sai_test $saifile $ftest]
+            if { [problem_with $ret] } {
+                return $ret
+            }
+
+            set rdata [parse_sai_results $saifile $ftest "" performance]
+
+            set ret [archive_sai_files [list "temp/\*$tname\*" "$saifile"] $::logdir]
+
+            append report "[setPerfHeader $saifile $ftest]\n"
+            append report "$rdata\n\n"
+
+            # write out the results
+            write_info "$report"
+
+            set perror "PortError.csv"
+            if { [file exists "$perror"] } {
+                set fp [open "$perror" r]
+                set data [read $fp]
+                close $fp
+                write_warning "$data"
+                append report "$data"
+                #send_simple_email "$email" "$subject" "$report"
+                #lreturn [list false "$data"]
+            }
+
+            send_simple_email "$email" "$subject" "$report"
+
+            set ret [check_results $rdata]
+            if { [problem_with $ret] } {
+                return $ret
+            }
+        }
+
+        ###############################################
+        sleep 5
+        set cmd "show_stats -a"
+        set exp "$cmd.*$::prompt($::dut)"
+
+        set ret [send_expect_pair $::sid($::dut) $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+        sleep 5
+        ###############################################
+    }
+
+    # delete testdir
+    set ret [delete_file $testdir]
+    if { [problem_with $ret] } {
+        write_warning "Unable to delete $testdir"
+    }
+
+    # change back to original dir
+    if { [catch "cd $restore" err] } {
+        write_error "could not cd to $restore - $err"
+    }
+
+    return [list true [data_from $ret]]
+}
+
+package provide performance 1.0

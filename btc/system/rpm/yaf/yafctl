@@ -1,0 +1,41 @@
+#!/bin/sh
+
+
+if [ $1 == "start" ];
+then
+
+    # Set enviroment
+    # Tell the zero-copy libpcap library to update BVSP with app state
+    # changes, as well as manual control of loadsharing
+    export PCAP_BVZCP_APP_STATES=1
+    export LD_LIBRARY_PATH="/usr/lib/zcp:$LD_LIBRARY_PATH"
+    
+    
+    # Set our sniff interface
+    # default sniffs from all interfaces
+    INTERFACE="default"
+    
+    # Create logging directories
+    BASEDIR="/bivio/shared/cpus/$HOSTNAME/yaf"
+    if [ ! -d $BASEDIR ]; then
+       mkdir -p $BASEDIR
+    fi
+    
+    LOGDIR="$BASEDIR/log"
+    if [ ! -d $LOGDIR ]; then
+       mkdir -p $LOGDIR
+    fi
+    
+    OUTDIR="$BASEDIR/out"
+    if [ ! -d $OUTDIR ]; then
+       mkdir -p $OUTDIR
+    fi
+    
+    
+    
+    #Options passed to YAF on startup
+    YAF_OPTS="--live pcap --log=stderr --in=$INTERFACE --out=$OUTDIR/ --rotate=30 -v "
+    
+    # Exec YAF
+    exec /usr/local/bin/yaf $YAF_OPTS
+fi

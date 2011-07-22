@@ -1,0 +1,94 @@
+#!/bin/bash
+#########################################################################
+# APC Nat Control                                                       #
+#                                                                       #
+#                                                                       #
+# Joel Ebrahimi <jebrahimi@bivio.net>                                   #
+#########################################################################
+
+
+#This value is dependent on the internal network you confgirued the system
+#to use. By default it is the value 10.10.10.1 .
+CPUX_NR0_IP=10.10.10.1
+
+echo ""
+echo "####################################################################"
+echo "#                         APC Natting                              #"
+echo "####################################################################"
+
+echo ""
+
+
+#iptables binary
+IPTABLES=/sbin/iptables
+
+
+if [ $# -ne 1 ];
+then 
+echo "WTF"
+  echo "Usage:"
+  echo "apcnat <enable|disable>"
+  echo "You may need to edit script for your enviroment"
+  exit
+fi
+
+
+
+if [ $1 == "enable" ];
+then 
+
+
+    echo "Turning on IP forwarding"
+    # Turn on IP forwarding
+    if [ -r /proc/sys/net/ipv4/ip_forward ]; then
+      echo "1" > /proc/sys/net/ipv4/ip_forward
+    fi
+
+#This will broadcast the routing to all the APC cpu's. If you only wanted to enable
+#this for certain cpu's you would change this line. 
+    bvcmd -p apc "route add default gw $CPUX_NR0_IP"
+
+
+    $IPTABLES --table nat --append POSTROUTING --out-interface mgt0 -j MASQUERADE
+    $IPTABLES --append FORWARD --in-interface nr0 -j ACCEPT
+
+    echo "APC Natting enabled"
+    
+
+
+
+    
+    
+elif [ $1 == "disable" ];
+then 
+    #Turn off IP forwarding
+    echo "Turning off IP forwarding"
+    if [ -r /proc/sys/net/ipv4/ip_forward ]; then
+      echo "0" > /proc/sys/net/ipv4/ip_forward
+    fi
+#If you changed which cpu's this is applied to, you should also change it here
+#to correspond where to remove the routes
+    bvcmd -p apc "route delete default gw $CPUX_NR0_IP"
+
+    $IPTABLES --table nat --delete POSTROUTING --out-interface mgt0 -j MASQUERADE
+    $IPTABLES --delete FORWARD --in-interface nr0 -j ACCEPT
+    
+    echo "APC Natting disabled"
+
+
+else
+  echo "Usage:"
+  echo "apcnat <enable|disable>"
+  echo "You may need to edit script for your enviroment"
+  exit
+
+
+
+fi
+
+echo "Done!"
+echo ""
+echo "####################################################################"
+echo ""
+
+

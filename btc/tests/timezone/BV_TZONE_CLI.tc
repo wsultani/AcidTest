@@ -1,0 +1,87 @@
+#!/usr/bin/expect --
+
+proc BV_TZONE_CLI {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Set and check various timezones thru CLI--sans tzselect.}
+set ${p}(Suite)		{timezone}
+set ${p}(Comments)	{Timezone script was originally written in July 2006 by jenriq. The same script was adapted to use BTC harness in Apr 2008 by jenriq, wsultani.}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{::dut}
+set ${p}(Created)	{2006-07-11}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    ############################################################################
+    # source other procs needed by this script
+    ############################################################################
+    set LEGACYHOME "./system/legacylibs"
+    source "$LEGACYHOME/shared_scripts.exp"
+    source "$LEGACYHOME/globals.exp"
+    source "$LEGACYHOME/log_procs.exp" ;# need until dbug proc calls are purged
+    source "$LEGACYHOME/timezones.exp"
+   
+    ############################################################################
+    # Main
+    ############################################################################
+   
+    set spawn_id $::sid($::dut)
+   
+    # make sure we are in CLI
+    set ret [$::dut bivio_change_user admin admin {(.*)(admin:)(.*)>}]
+    if { [problem_with $ret] } {
+       write_error "Can not get to CLI. Aborting all tests."
+       return [list false [data_from $ret]]
+    }
+   
+    write_step "About to start with the main test."
+    for {set countd 0} {$countd < 25} {incr countd} {
+
+       set locale $timezone($countd)
+       set timez  $tzone($countd)
+  
+       set name [regsub -all {[/|" "]} "$locale$timez" "-"] 
+       start_subtest "$name"
+
+       write_info "Accessing timezone menu.."
+       set retlist [send_expect_pair $spawn_id "set timezone" "Your selection" "" 1 3]
+       if { [problem_with $retlist] } {
+          set msg "Unable to access timezone menu."
+          write_error $msg
+          end_subtest [list false $msg]
+          return [analyze_subtest]
+       }
+ 
+       write_info "Getting the index for $locale.."
+       set my_choice [get_num_index [data_from $retlist] $locale] 
+ 
+       write_step "Setting timezone $timez for $locale"
+       set expectation "Setting timezone to $locale"
+       set retlist [send_expect_pair $spawn_id $my_choice $expectation "" 1 3]
+       if { [problem_with $retlist] } {
+            write_error "Did not see that timezone was set for $locale"
+            end_subtest [list false ""]
+            continue
+       } 
+ 
+       write_step "Verify timezone $timez was saved for $locale"
+       set expectation "Current timezone is: $timez"
+       set retlist [send_expect_pair $spawn_id "show timezone" $expectation "" 1 3]
+       if { [problem_with $retlist] } {
+            write_error "TZ, that was set for $locale, does not match current TZ!"
+            end_subtest [list false ""]
+            continue
+       } 
+ 
+       end_subtest [list true ""]
+ 
+    }
+
+    return [analyze_subtest] 
+}
+
+# this is required for auto loading
+package provide BV_TZONE_CLI 1.0

@@ -1,0 +1,117 @@
+=========================================
+Snort/Barnyard For The Bivio 7500
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+Snort is an open source network intrusion prevention and
+detection system utilizing a rule-driven language, which
+combines the benefits of signature, protocol and anomaly
+based inspection methods. With millions of downloads to date,
+Snort is the most widely deployed intrusion detection and
+prevention technology worldwide and has become the de facto
+standard for the industry.
+
+Barnyard is an output spool reader for Snort!
+This program decouples output overhead from the Snort network intrusion
+detection system and allows Snort to run at full speed. It takes input
+and output plugins and can therefore be used to convert almost any spooled file.
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+This document is intended to get Snort and Barnyard running on the Bivio 7500.
+It is deployed in a basic configurations. Users should be aware of how Snort
+and Barnyard work and should edit each default configuration file for desired
+run behavior.
+
+This build was for IPv4. See other build for IPv6.
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+1. Download the Snort RPM for the Bivio platform
+
+        wget http://www.bivio.net/rpms/snort-2.8.0-1.ppc.rpm
+
+2. Install the Snort RPM
+
+        rpm -Uvh snort-2.8.0-1.ppc.rpm
+
+3. Download the Barnyard RPM for the Bivio platform
+
+        wget http://www.bivio.net/rpms/barnyard-0.2.0-1.ppc.rpm
+
+4. Install the Barnyard RPM
+
+        rpm -Uvh barnyard-0.2.0-1.ppc.rpm
+
+* The following covers rule installation. Bivio Networks packages GPL Snort
+  Community Rules only. Users looking for current rules should goto www.snort.org
+  and obtain the latest ruleset according to their needs. The next section will
+  cover both installation method.
+
+Using Community Rules Supplied By Bivio RPM
+1. Download the Snort rules RPM
+
+        wget http://www.bivio.net/rpms/snort_community_rules-2.8.0-1.ppc.rpm
+
+2. Install the Snort Rule RPM
+
+        rpm -Uvh snort_community_rules-2.8.0-1.ppc.rpm
+
+Using Snort Rules Supplied From snort.org
+1. Download the Current ruleset from the section your snort.org account has
+   access too (VRT License, Registered Users, Non-Registrered user)
+
+        wget http://www.snort.org/pub-bin/downloads.cgi/Download/comm_rules/Community-Rules-CURRENT.tar.g
+
+2. Untar the rules tarball
+
+        tar -zxvf Community-Rules-CURRENT.tar.gz
+
+3. Make the directory to store untarred rules in
+
+        mkdir /etc/rules
+
+4. Copy all rules files to this directory
+
+        cp rules/*.rules /etc/rules/
+
+5. Copy the sid-msg.map to the Snort default directory
+
+        cp rules/community-sid-msg.map /etc/snort/sid-msg.map
+
+
+-----------------------------------------
+Configuration (optional)
+-----------------------------------------
+
+1. The Snort configuration file can now be edited for desired runtime behavior and options
+
+        vi /etc/snort/snort.conf
+
+2. The Barnyard configuration file can now be edited for desired runtime behavior and options
+
+        vi /etc/barnyard/barnyard.conf
+
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start Snort running on the application CPU's
+
+        nrsp start zsnort28
+
+2. Start Barnyard on CPU-x
+
+        nrsp start barnyard
+
+

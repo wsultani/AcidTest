@@ -1,0 +1,1134 @@
+############################################################################################################
+#
+# REQUIREMENTS:
+# ------------
+#
+# SMBAPI setup in your env on beavis
+#	- setenv LD_LIBRARY_PATH /usr/local/smartbits/SmartBitsAPI/bin
+#	- set env PATH ".:/usr/local/smartbits/SmartBitsAPI/bin"
+# Make the following directories:
+#	- mkdir temp
+#
+#
+# CABLING INSTRUCTIONS
+# --------------------
+# Slot0: 2-Port   10 Gbps Fiber Card	connected to	XLW-3721A
+# Slot1: 2-Port   10 Gbps Fiber Card	connected to	XLW-3721A
+# 
+# SMB Port #            	Bivio Port
+# ~~~~~~~~~~~~          	~~~~~~~~~~  
+# Slot0
+# ~~~~~
+# 00:02:00(2A-01)	-	s0.e0
+# 00:03:00(2B-01)	-	s0.e1
+#  
+# END
+# ---
+############################################################################################################
+sai smartflow
+
+testdefaults
+   erroraction IGNORE				# You can ignore warnings only, not catastrophic errors
+   testinteractive no				# This "turns off" dialog boxes
+   showloading no				# Stops showing the loading of the streams in logfile
+   sizewcrc yes					# Pkt Size with CRC Yes|No
+   readbackdelay 2				# Delay on counters are read (Range: .001 second (1 ms) to 600seconds)
+   socketlinkport 16385				# Port to connect to SMB Chassis
+   learningcount 1				# Specifies number of "training" packets to be sent
+   statusmessagefilter normal			# 
+   RatePerFlowUnit percentage			#
+   ResultDataSpeedUnit Mbps			#
+   ResultL2Adjustment 38			#
+   thruputSMMR 100.000:1.000:100.000:1.0	# Start:Min:Max:Resolution
+   definethruput 0				#
+   thruputRSB 0:0:1				# 0:0:1 Standard Binary Search,
+   thruputscale 0.500				#
+   thruputgranularity group			# Options: system, group, flow, or all
+ 
+ports
+################################################################################################################
+#      H:S:P     Strt% Step   Spd Dplx AutoNg Burst Fill Dut DIC IPaddress   Gateway    Netmask     Mode   Name#
+################################################################################################################
+# 
+# Slot0:
+# 2-Port   10 Gbps Fiber Card(2Ports Used) - XLW-3721A
+# Ports s0.e0 --> e2
+# 
+  eth  00:02:00  10.00 10.00  10G  F    A      1  random  L2S yes 10.1.0.1   10.1.0.2  255.0.0.0  fiber  s0e0
+  eth  00:03:00  10.00 10.00  10G  F    A      1  random  L2S yes 10.2.0.1   10.2.0.2  255.0.0.0  fiber  s0e1
+
+resolve_endpoints
+########################################################################################################
+#       Endpoint    Port          MACaddress       IPaddress  Gateway       UDP/TCPport VlanTag        #
+########################################################################################################
+########################################################################################################
+# s0.e0 Flows Start - XPC-Test
+########################################################################################################
+   node 1000    s0e0  0.0.19.0.0.00    10.1.1.0   10.1.0.2/8   1024+
+   node 1001    s0e0  0.0.19.0.0.01    10.1.1.1   10.1.0.2/8   1024+
+   node 1002    s0e0  0.0.19.0.0.02    10.1.1.2   10.1.0.2/8   1024+
+   node 1003    s0e0  0.0.19.0.0.03    10.1.1.3   10.1.0.2/8   1024+
+   node 1004    s0e0  0.0.19.0.0.04    10.1.1.4   10.1.0.2/8   1024+
+   node 1005    s0e0  0.0.19.0.0.05    10.1.1.5   10.1.0.2/8   1024+
+   node 1006    s0e0  0.0.19.0.0.06    10.1.1.6   10.1.0.2/8   1024+
+   node 1007    s0e0  0.0.19.0.0.07    10.1.1.7   10.1.0.2/8   1024+
+   node 1008    s0e0  0.0.19.0.0.08    10.1.1.8   10.1.0.2/8   1024+
+   node 1009    s0e0  0.0.19.0.0.09    10.1.1.9   10.1.0.2/8   1024+
+   node 1010    s0e0  0.0.19.0.0.0A    10.1.1.10  10.1.0.2/8   1024+
+   node 1011    s0e0  0.0.19.0.0.0B    10.1.1.11  10.1.0.2/8   1024+
+
+   node 1012    s0e0  0.0.19.0.0.0C    10.1.1.12  10.1.0.2/8   1024+
+   node 1013    s0e0  0.0.19.0.0.0D    10.1.1.13  10.1.0.2/8   1024+
+   node 1014    s0e0  0.0.19.0.0.0E    10.1.1.14  10.1.0.2/8   1024+
+   node 1015    s0e0  0.0.19.0.0.0F    10.1.1.15  10.1.0.2/8   1024+
+   node 1016    s0e0  0.0.19.0.0.10    10.1.1.16  10.1.0.2/8   1024+
+   node 1017    s0e0  0.0.19.0.0.11    10.1.1.17  10.1.0.2/8   1024+
+   node 1018    s0e0  0.0.19.0.0.12    10.1.1.18  10.1.0.2/8   1024+
+   node 1019    s0e0  0.0.19.0.0.13    10.1.1.19  10.1.0.2/8   1024+
+
+   node 1020    s0e0  0.0.19.0.0.14    10.1.1.20  10.1.0.2/8   1024+
+   node 1021    s0e0  0.0.19.0.0.15    10.1.1.21  10.1.0.2/8   1024+
+   node 1022    s0e0  0.0.19.0.0.16    10.1.1.22  10.1.0.2/8   1024+
+   node 1023    s0e0  0.0.19.0.0.17    10.1.1.23  10.1.0.2/8   1024+
+   node 1024    s0e0  0.0.19.0.0.18    10.1.1.24  10.1.0.2/8   1024+
+   node 1025    s0e0  0.0.19.0.0.19    10.1.1.25  10.1.0.2/8   1024+
+   node 1026    s0e0  0.0.19.0.0.1A    10.1.1.26  10.1.0.2/8   1024+
+   node 1027    s0e0  0.0.19.0.0.1B    10.1.1.27  10.1.0.2/8   1024+
+
+   node 1028    s0e0  0.0.19.0.0.1C    10.1.1.28  10.1.0.2/8   1024+
+   node 1029    s0e0  0.0.19.0.0.1D    10.1.1.29  10.1.0.2/8   1024+
+   node 1030    s0e0  0.0.19.0.0.1E    10.1.1.30  10.1.0.2/8   1024+
+   node 1031    s0e0  0.0.19.0.0.1F    10.1.1.31  10.1.0.2/8   1024+
+   node 1032    s0e0  0.0.19.0.0.20    10.1.1.32  10.1.0.2/8   1024+
+   node 1033    s0e0  0.0.19.0.0.21    10.1.1.33  10.1.0.2/8   1024+
+   node 1034    s0e0  0.0.19.0.0.22    10.1.1.34  10.1.0.2/8   1024+
+   node 1035    s0e0  0.0.19.0.0.23    10.1.1.35  10.1.0.2/8   1024+
+   node 1036    s0e0  0.0.19.0.0.24    10.1.1.36  10.1.0.2/8   1024+
+   node 1037    s0e0  0.0.19.0.0.25    10.1.1.37  10.1.0.2/8   1024+
+   node 1038    s0e0  0.0.19.0.0.26    10.1.1.38  10.1.0.2/8   1024+
+   node 1039    s0e0  0.0.19.0.0.27    10.1.1.39  10.1.0.2/8   1024+
+
+
+########################################################################################################
+# s0.e1 Flows Start - XPC-Test									       #
+########################################################################################################
+   node 2000    s0e1  0.0.19.0.1.00    10.2.1.0   10.2.0.2/8   1024+
+   node 2001    s0e1  0.0.19.0.1.01    10.2.1.1   10.2.0.2/8   1024+
+   node 2002    s0e1  0.0.19.0.1.02    10.2.1.2   10.2.0.2/8   1024+
+   node 2003    s0e1  0.0.19.0.1.03    10.2.1.3   10.2.0.2/8   1024+
+   node 2004    s0e1  0.0.19.0.1.04    10.2.1.4   10.2.0.2/8   1024+
+   node 2005    s0e1  0.0.19.0.1.05    10.2.1.5   10.2.0.2/8   1024+
+   node 2006    s0e1  0.0.19.0.1.06    10.2.1.6   10.2.0.2/8   1024+
+   node 2007    s0e1  0.0.19.0.1.07    10.2.1.7   10.2.0.2/8   1024+
+   node 2008    s0e1  0.0.19.0.1.08    10.2.1.8   10.2.0.2/8   1024+
+   node 2009    s0e1  0.0.19.0.1.09    10.2.1.9   10.2.0.2/8   1024+
+   node 2010    s0e1  0.0.19.0.1.0A    10.2.1.10  10.2.0.2/8   1024+
+   node 2011    s0e1  0.0.19.0.1.0B    10.2.1.11  10.2.0.2/8   1024+
+
+   node 2012    s0e1  0.0.19.0.1.0C    10.2.1.12  10.2.0.2/8   1024+
+   node 2013    s0e1  0.0.19.0.1.0D    10.2.1.13  10.2.0.2/8   1024+
+   node 2014    s0e1  0.0.19.0.1.0E    10.2.1.14  10.2.0.2/8   1024+
+   node 2015    s0e1  0.0.19.0.1.0F    10.2.1.15  10.2.0.2/8   1024+
+   node 2016    s0e1  0.0.19.0.1.10    10.2.1.16  10.2.0.2/8   1024+
+   node 2017    s0e1  0.0.19.0.1.11    10.2.1.17  10.2.0.2/8   1024+
+   node 2018    s0e1  0.0.19.0.1.12    10.2.1.18  10.2.0.2/8   1024+
+   node 2019    s0e1  0.0.19.0.1.13    10.2.1.19  10.2.0.2/8   1024+
+
+
+   node 2020    s0e1  0.0.19.0.1.14    10.2.1.20  10.2.0.2/8   1024+
+   node 2021    s0e1  0.0.19.0.1.15    10.2.1.21  10.2.0.2/8   1024+
+   node 2022    s0e1  0.0.19.0.1.16    10.2.1.22  10.2.0.2/8   1024+
+   node 2023    s0e1  0.0.19.0.1.17    10.2.1.23  10.2.0.2/8   1024+
+   node 2024    s0e1  0.0.19.0.1.18    10.2.1.24  10.2.0.2/8   1024+
+   node 2025    s0e1  0.0.19.0.1.19    10.2.1.25  10.2.0.2/8   1024+
+   node 2026    s0e1  0.0.19.0.1.1A    10.2.1.26  10.2.0.2/8   1024+
+   node 2027    s0e1  0.0.19.0.1.1B    10.2.1.27  10.2.0.2/8   1024+
+
+   node 2028    s0e1  0.0.19.0.1.1C    10.2.1.28  10.2.0.2/8   1024+
+   node 2029    s0e1  0.0.19.0.1.1D    10.2.1.29  10.2.0.2/8   1024+
+   node 2030    s0e1  0.0.19.0.1.1E    10.2.1.30  10.2.0.2/8   1024+
+   node 2031    s0e1  0.0.19.0.1.1F    10.2.1.31  10.2.0.2/8   1024+
+   node 2032    s0e1  0.0.19.0.1.20    10.2.1.32  10.2.0.2/8   1024+
+   node 2033    s0e1  0.0.19.0.1.21    10.2.1.33  10.2.0.2/8   1024+
+   node 2034    s0e1  0.0.19.0.1.22    10.2.1.34  10.2.0.2/8   1024+
+   node 2035    s0e1  0.0.19.0.1.23    10.2.1.35  10.2.0.2/8   1024+
+   node 2036    s0e1  0.0.19.0.1.24    10.2.1.36  10.2.0.2/8   1024+
+   node 2037    s0e1  0.0.19.0.1.25    10.2.1.37  10.2.0.2/8   1024+
+   node 2038    s0e1  0.0.19.0.1.26    10.2.1.38  10.2.0.2/8   1024+
+   node 2039    s0e1  0.0.19.0.1.27    10.2.1.39  10.2.0.2/8   1024+
+
+  
+defineflows
+########################################################################################################
+#      Src->Dst           Name             Frmsz Tos TTL Varfld Vid VlanP Len Ack Aeq Wnd Flg          #
+########################################################################################################
+# s0.e0                                                                                                #
+######################################################################################################## 
+   UDP 1000->2001    s0e0_000             64    00  64  none   0   0
+   UDP 1001->2001    s0e0_001             64    00  64  none   0   0
+   UDP 1002->2001    s0e0_002             64    00  64  none   0   0
+   UDP 1003->2001    s0e0_003             64    00  64  none   0   0
+   UDP 1004->2001    s0e0_004             64    00  64  none   0   0
+   UDP 1005->2001    s0e0_005             64    00  64  none   0   0
+   UDP 1006->2001    s0e0_006             64    00  64  none   0   0
+   UDP 1007->2001    s0e0_007             64    00  64  none   0   0
+   UDP 1008->2001    s0e0_008             64    00  64  none   0   0
+   UDP 1009->2001    s0e0_009             64    00  64  none   0   0
+   UDP 1010->2001    s0e0_010             64    00  64  none   0   0
+   UDP 1011->2001    s0e0_011             64    00  64  none   0   0
+   
+   UDP 1012->2001    s0e0_012             64    00  64  none   0   0
+   UDP 1013->2001    s0e0_013             64    00  64  none   0   0 
+   UDP 1014->2001    s0e0_014             64    00  64  none   0   0
+   UDP 1015->2001    s0e0_015             64    00  64  none   0   0
+   UDP 1016->2001    s0e0_016             64    00  64  none   0   0
+   UDP 1017->2001    s0e0_017             64    00  64  none   0   0
+   UDP 1018->2001    s0e0_018             64    00  64  none   0   0
+   UDP 1019->2001    s0e0_019             64    00  64  none   0   0
+
+
+   UDP 1020->2001    s0e0_020             64    00  64  none   0   0
+   UDP 1021->2001    s0e0_021             64    00  64  none   0   0
+   UDP 1022->2001    s0e0_022             64    00  64  none   0   0
+   UDP 1023->2001    s0e0_023             64    00  64  none   0   0
+   UDP 1024->2001    s0e0_024             64    00  64  none   0   0
+   UDP 1025->2001    s0e0_025             64    00  64  none   0   0
+   UDP 1026->2001    s0e0_026             64    00  64  none   0   0
+   UDP 1027->2001    s0e0_027             64    00  64  none   0   0
+
+   UDP 1028->2001    s0e0_028             64    00  64  none   0   0
+   UDP 1029->2001    s0e0_029             64    00  64  none   0   0
+   UDP 1030->2001    s0e0_030             64    00  64  none   0   0
+   UDP 1031->2001    s0e0_031             64    00  64  none   0   0
+   UDP 1032->2001    s0e0_032             64    00  64  none   0   0
+   UDP 1033->2001    s0e0_033             64    00  64  none   0   0
+   UDP 1034->2001    s0e0_034             64    00  64  none   0   0
+   UDP 1035->2001    s0e0_035             64    00  64  none   0   0
+   UDP 1036->2001    s0e0_036             64    00  64  none   0   0
+   UDP 1037->2001    s0e0_037             64    00  64  none   0   0
+   UDP 1038->2001    s0e0_038             64    00  64  none   0   0
+   UDP 1039->2001    s0e0_039             64    00  64  none   0   0
+
+   
+########################################################################################################
+# s0.e1                                                                                                #
+######################################################################################################## 
+   UDP 2000->1001    s0e1_000             64    00  64  none   0   0
+   UDP 2001->1001    s0e1_001             64    00  64  none   0   0
+   UDP 2002->1001    s0e1_002             64    00  64  none   0   0
+   UDP 2003->1001    s0e1_003             64    00  64  none   0   0
+   UDP 2004->1001    s0e1_004             64    00  64  none   0   0
+   UDP 2005->1001    s0e1_005             64    00  64  none   0   0
+   UDP 2006->1001    s0e1_006             64    00  64  none   0   0
+   UDP 2007->1001    s0e1_007             64    00  64  none   0   0
+   UDP 2008->1001    s0e1_008             64    00  64  none   0   0
+   UDP 2009->1001    s0e1_009             64    00  64  none   0   0
+   UDP 2010->1001    s0e1_010             64    00  64  none   0   0
+   UDP 2011->1001    s0e1_011             64    00  64  none   0   0
+
+   UDP 2012->1001    s0e1_012             64    00  64  none   0   0
+   UDP 2013->1001    s0e1_013             64    00  64  none   0   0
+   UDP 2014->1001    s0e1_014             64    00  64  none   0   0
+   UDP 2015->1001    s0e1_015             64    00  64  none   0   0
+   UDP 2016->1001    s0e1_016             64    00  64  none   0   0
+   UDP 2017->1001    s0e1_017             64    00  64  none   0   0
+   UDP 2018->1001    s0e1_018             64    00  64  none   0   0
+   UDP 2019->1001    s0e1_019             64    00  64  none   0   0
+
+   UDP 2020->1001    s0e1_020             64    00  64  none   0   0
+   UDP 2021->1001    s0e1_021             64    00  64  none   0   0
+   UDP 2022->1001    s0e1_022             64    00  64  none   0   0
+   UDP 2023->1001    s0e1_023             64    00  64  none   0   0
+   UDP 2024->1001    s0e1_024             64    00  64  none   0   0
+   UDP 2025->1001    s0e1_025             64    00  64  none   0   0
+   UDP 2026->1001    s0e1_026             64    00  64  none   0   0
+   UDP 2027->1001    s0e1_027             64    00  64  none   0   0
+
+   UDP 2028->1001    s0e1_028             64    00  64  none   0   0
+   UDP 2029->1001    s0e1_029             64    00  64  none   0   0
+   UDP 2030->1001    s0e1_030             64    00  64  none   0   0
+   UDP 2031->1001    s0e1_031             64    00  64  none   0   0
+   UDP 2032->1001    s0e1_032             64    00  64  none   0   0
+   UDP 2033->1001    s0e1_033             64    00  64  none   0   0
+   UDP 2034->1001    s0e1_034             64    00  64  none   0   0
+   UDP 2035->1001    s0e1_035             64    00  64  none   0   0
+   UDP 2036->1001    s0e1_036             64    00  64  none   0   0
+   UDP 2037->1001    s0e1_037             64    00  64  none   0   0
+   UDP 2038->1001    s0e1_038             64    00  64  none   0   0
+   UDP 2039->1001    s0e1_039             64    00  64  none   0   0
+
+    
+definegroups
+########################################################################################################
+#        name             flow_name_in_group                                                           #
+######################################################################################################## 
+#
+# Traffic on 1 CPU to CPU-1c1
+#
+group Perf_1_CPU    	s0e0_000\
+			s0e1_000\
+#
+# Traffic on 2 CPU to CPU-1c1,1c0
+#			
+group Perf_2_CPU    	s0e0_000:s0e0_001\
+			s0e1_000:s0e1_001\
+#
+# Traffic on 3 CPU to CPU-1c1,1c0, 2c1
+#
+group Perf_3_CPU   	s0e0_000:s0e0_002\
+			s0e1_000:s0e1_002\
+#
+# Traffic on 4 CPU to CPU-1c1,1c0,2c1,2c0
+#			
+group Perf_4_CPU    	s0e0_000:s0e0_003\
+			s0e1_000:s0e1_003\
+#
+# Traffic on 5 CPU to CPU-1c1,1c0,2c1,2c0,3c1
+#			
+group Perf_5_CPU    	s0e0_000:s0e0_004\
+			s0e1_000:s0e1_004\
+#
+# Traffic on 6 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0
+#			
+group Perf_6_CPU    	s0e0_000:s0e0_005\
+			s0e1_000:s0e1_005\
+#
+# Traffic on 7 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1
+#			
+group Perf_7_CPU   	s0e0_000:s0e0_006\
+			s0e1_000:s0e1_006\
+#
+# Traffic on 8 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1,4c0
+#			
+group Perf_8_CPU    	s0e0_000:s0e0_007\
+			s0e1_000:s0e1_007\
+#
+# Traffic on 9 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1,4c0,5c1
+#			
+group Perf_9_CPU    	s0e0_000:s0e0_008\
+			s0e1_000:s0e1_008\
+#
+# Traffic on 10 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1,4c0,5c1,5c0
+#			
+group Perf_10_CPU    	s0e0_000:s0e0_009\
+			s0e1_000:s0e1_009\
+#
+# Traffic on 11 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1,4c0,5c1,5c0,6c1
+#			
+group Perf_11_CPU    	s0e0_000:s0e0_010\
+			s0e1_000:s0e1_010\
+#
+# Traffic on 12 CPU to CPU-1c1,1c0,2c1,2c0,3c1,3c0,4c1,4c0,5c1,5c0,6c1,6c0
+#			
+group Perf_12_CPU    	s0e0_000:s0e0_011\
+			s0e1_000:s0e1_011\			
+#
+# Traffic on 13 CPU's 
+#			
+group Perf_13_CPU    	s0e0_000:s0e0_012\
+			s0e1_000:s0e1_012\
+
+#
+# Traffic on 14 CPU 
+#			
+group Perf_14_CPU    	s0e0_000:s0e0_013\
+			s0e1_000:s0e1_013\
+			
+#
+# Traffic on 15 CPU 
+#			
+group Perf_15_CPU    	s0e0_000:s0e0_014\
+			s0e1_000:s0e1_014\			
+
+#
+# Traffic on 16 CPU 
+#			
+group Perf_16_CPU    	s0e0_000:s0e0_015\
+			s0e1_000:s0e1_015\			
+
+#
+# Traffic on 17 CPU 
+#			
+group Perf_17_CPU    	s0e0_000:s0e0_016\
+			s0e1_000:s0e1_016\			
+
+#
+# Traffic on 18 CPU 
+#			
+group Perf_18_CPU    	s0e0_000:s0e0_017\
+			s0e1_000:s0e1_017\			
+
+#
+# Traffic on 19 CPU 
+#			
+group Perf_19_CPU    	s0e0_000:s0e0_018\
+			s0e1_000:s0e1_018\			
+
+#
+# Traffic on 20 CPU 
+#			
+group Perf_20_CPU    	s0e0_000:s0e0_019\
+			s0e1_000:s0e1_019\			
+
+#
+# Traffic on 21 CPU 
+#			
+group Perf_21_CPU    	s0e0_000:s0e0_020\
+			s0e1_000:s0e1_020\			
+
+
+#
+# Traffic on 22 CPU 
+#			
+group Perf_22_CPU    	s0e0_000:s0e0_021\
+			s0e1_000:s0e1_021\			
+
+#
+# Traffic on 23 CPU 
+#			
+group Perf_23_CPU    	s0e0_000:s0e0_022\
+			s0e1_000:s0e1_022\			
+
+#
+# Traffic on 24 CPU 
+#			
+group Perf_24_CPU    	s0e0_000:s0e0_023\
+			s0e1_000:s0e1_023\			
+
+#
+# Traffic on 25 CPU 
+#			
+group Perf_25_CPU    	s0e0_000:s0e0_024\
+			s0e1_000:s0e1_024\			
+
+#
+# Traffic on 26 CPU 
+#			
+group Perf_26_CPU    	s0e0_000:s0e0_025\
+			s0e1_000:s0e1_025\			
+
+#
+# Traffic on 27 CPU 
+#			
+group Perf_27_CPU    	s0e0_000:s0e0_026\
+			s0e1_000:s0e1_026\			
+
+#
+# Traffic on 28 CPU 
+#			
+group Perf_28_CPU    	s0e0_000:s0e0_027\
+			s0e1_000:s0e1_027\			
+
+#
+# Traffic on 29 CPU 
+#			
+group Perf_29_CPU    	s0e0_000:s0e0_028\
+			s0e1_000:s0e1_028\			
+
+#
+# Traffic on 30 CPU 
+#			
+group Perf_30_CPU    	s0e0_000:s0e0_029\
+			s0e1_000:s0e1_029\			
+
+#
+# Traffic on 31 CPU 
+#			
+group Perf_31_CPU    	s0e0_000:s0e0_030\
+			s0e1_000:s0e1_030\			
+
+#
+# Traffic on 32 CPU 
+#			
+group Perf_32_CPU    	s0e0_000:s0e0_031\
+			s0e1_000:s0e1_031\			
+
+#
+# Traffic on 33 CPU 
+#			
+group Perf_33_CPU    	s0e0_000:s0e0_032\
+			s0e1_000:s0e1_032\			
+
+#
+# Traffic on 34 CPU 
+#			
+group Perf_34_CPU    	s0e0_000:s0e0_033\
+			s0e1_000:s0e1_033\			
+
+#
+# Traffic on 35 CPU 
+#			
+group Perf_35_CPU    	s0e0_000:s0e0_034\
+			s0e1_000:s0e1_034\			
+
+#
+# Traffic on 36 CPU 
+#			
+group Perf_36_CPU    	s0e0_000:s0e0_035\
+			s0e1_000:s0e1_035\			
+
+#
+# Traffic on 37 CPU 
+#			
+group Perf_37_CPU    	s0e0_000:s0e0_036\
+			s0e1_000:s0e1_036\			
+
+#
+# Traffic on 38 CPU 
+#			
+group Perf_38_CPU    	s0e0_000:s0e0_037\
+			s0e1_000:s0e1_037\			
+
+#
+# Traffic on 39 CPU 
+#			
+group Perf_39_CPU    	s0e0_000:s0e0_038\
+			s0e1_000:s0e1_038\			
+
+#
+# Traffic on 40 CPU 
+#			
+group Perf_40_CPU    	s0e0_000:s0e0_039\
+			s0e1_000:s0e1_039\			
+
+#
+# 1 CPU - Short Test (10 Second Test)
+#
+flowtest 1
+   testname Perf_1_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_1_CPU
+   reportfilename temp/Perf_1_CPU_short.csv
+   statusmessagefilename temp/Perf_1_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no   
+#
+# 2 CPU - Short Test (10 Second Test)
+#
+flowtest 2
+   testname Perf_2_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_2_CPU
+   reportfilename temp/Perf_2_CPU_short.csv
+   statusmessagefilename temp/Perf_2_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no  
+
+#
+# 3 CPU - Short Test (10 Second Test)
+#
+flowtest 3
+   testname Perf_3_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_3_CPU
+   reportfilename temp/Perf_3_CPU_short.csv
+   statusmessagefilename temp/Perf_3_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no  
+   
+#
+# 4 CPU - Short Test (10 Second Test)
+#
+flowtest 4
+   testname Perf_4_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_4_CPU
+   reportfilename temp/Perf_4_CPU_short.csv
+   statusmessagefilename temp/Perf_4_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no  
+   
+#
+# 5 CPU - Short Test (10 Second Test)
+#
+flowtest 5
+   testname Perf_5_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_5_CPU
+   reportfilename temp/Perf_5_CPU_short.csv
+   statusmessagefilename temp/Perf_5_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no  
+   
+#
+# 6 CPU - Short Test (10 Second Test)
+#
+flowtest 6
+   testname Perf_6_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_6_CPU
+   reportfilename temp/Perf_6_CPU_short.csv
+   statusmessagefilename temp/Perf_6_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no 
+   
+#
+# 7 CPU - Short Test (10 Second Test)
+#
+flowtest 7
+   testname Perf_7_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_7_CPU
+   reportfilename temp/Perf_7_CPU_short.csv
+   statusmessagefilename temp/Perf_7_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no
+   
+#
+# 8 CPU - Short Test (10 Second Test)
+#
+flowtest 8
+   testname Perf_8_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_8_CPU
+   reportfilename temp/Perf_8_CPU_short.csv
+   statusmessagefilename temp/Perf_8_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no
+   
+#
+# 9 CPU - Short Test (10 Second Test)
+#
+flowtest 9
+   testname Perf_9_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_9_CPU
+   reportfilename temp/Perf_9_CPU_short.csv
+   statusmessagefilename temp/Perf_9_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no
+   
+#
+# 10 CPU - Short Test (10 Second Test)
+#
+flowtest 10
+   testname Perf_10_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_10_CPU
+   reportfilename temp/Perf_10_CPU_short.csv
+   statusmessagefilename temp/Perf_10_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no
+   
+#
+# 11 CPU - Short Test (10 Second Test)
+#
+flowtest 11
+   testname Perf_11_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_11_CPU
+   reportfilename temp/Perf_11_CPU_short.csv
+   statusmessagefilename temp/Perf_11_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no
+   
+#
+# 12 CPU - Short Test (10 Second Test)
+#
+flowtest 12
+   testname Perf_12_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_12_CPU
+   reportfilename temp/Perf_12_CPU_short.csv
+   statusmessagefilename temp/Perf_12_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no   
+   
+#
+# 13 CPU - Short Test (10 Second Test)
+#
+flowtest 13
+   testname Perf_13_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_13_CPU
+   reportfilename temp/Perf_13_CPU_short.csv
+   statusmessagefilename temp/Perf_13_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no   
+ 
+#
+# 14 CPU - Short Test (10 Second Test)
+#
+flowtest 14
+   testname Perf_14_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_14_CPU
+   reportfilename temp/Perf_14_CPU_short.csv
+   statusmessagefilename temp/Perf_14_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no   
+   
+#
+# 15 CPU - Short Test (10 Second Test)
+#
+flowtest 15
+   testname Perf_15_CPU_Short
+   connect 192.168.100.212
+   testtype THRUPUT
+   testtime 10
+   ReportAFGRTS 1:1:1:0:0:0
+   training NO
+   includegroups Perf_15_CPU
+   reportfilename temp/Perf_15_CPU_short.csv
+   statusmessagefilename temp/Perf_15_CPU_short.log
+   framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+   DIEnabled no   
+ 
+ #
+ # 16 CPU - Short Test (10 Second Test)
+ #
+ flowtest 16
+    testname Perf_16_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_16_CPU
+    reportfilename temp/Perf_16_CPU_short.csv
+    statusmessagefilename temp/Perf_16_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+    
+ #
+ # 17 CPU - Short Test (10 Second Test)
+ #
+ flowtest 17
+    testname Perf_17_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_17_CPU
+    reportfilename temp/Perf_17_CPU_short.csv
+    statusmessagefilename temp/Perf_17_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+
+    
+ #
+ # 18 CPU - Short Test (10 Second Test)
+ #
+ flowtest 18
+    testname Perf_18_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_18_CPU
+    reportfilename temp/Perf_18_CPU_short.csv
+    statusmessagefilename temp/Perf_18_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 19 CPU - Short Test (10 Second Test)
+ #
+ flowtest 19
+    testname Perf_19_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_19_CPU
+    reportfilename temp/Perf_19_CPU_short.csv
+    statusmessagefilename temp/Perf_19_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 20 CPU - Short Test (10 Second Test)
+ #
+ flowtest 20
+    testname Perf_20_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_20_CPU
+    reportfilename temp/Perf_20_CPU_short.csv
+    statusmessagefilename temp/Perf_20_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 21 CPU - Short Test (10 Second Test)
+ #
+ flowtest 21
+    testname Perf_21_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_21_CPU
+    reportfilename temp/Perf_21_CPU_short.csv
+    statusmessagefilename temp/Perf_21_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 22 CPU - Short Test (10 Second Test)
+ #
+ flowtest 22
+    testname Perf_22_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_22_CPU
+    reportfilename temp/Perf_22_CPU_short.csv
+    statusmessagefilename temp/Perf_22_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 23 CPU - Short Test (10 Second Test)
+ #
+ flowtest 23
+    testname Perf_23_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_23_CPU
+    reportfilename temp/Perf_23_CPU_short.csv
+    statusmessagefilename temp/Perf_23_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 24 CPU - Short Test (10 Second Test)
+ #
+ flowtest 24
+    testname Perf_24_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_24_CPU
+    reportfilename temp/Perf_24_CPU_short.csv
+    statusmessagefilename temp/Perf_24_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 25 CPU - Short Test (10 Second Test)
+ #
+ flowtest 25
+    testname Perf_25_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_25_CPU
+    reportfilename temp/Perf_25_CPU_short.csv
+    statusmessagefilename temp/Perf_25_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 26 CPU - Short Test (10 Second Test)
+ #
+ flowtest 26
+    testname Perf_26_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_26_CPU
+    reportfilename temp/Perf_26_CPU_short.csv
+    statusmessagefilename temp/Perf_26_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+ 
+     
+ #
+ # 27 CPU - Short Test (10 Second Test)
+ #
+ flowtest 27
+    testname Perf_27_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_27_CPU
+    reportfilename temp/Perf_27_CPU_short.csv
+    statusmessagefilename temp/Perf_27_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 28 CPU - Short Test (10 Second Test)
+ #
+ flowtest 28
+    testname Perf_28_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_28_CPU
+    reportfilename temp/Perf_28_CPU_short.csv
+    statusmessagefilename temp/Perf_28_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 29 CPU - Short Test (10 Second Test)
+ #
+ flowtest 29
+    testname Perf_29_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_29_CPU
+    reportfilename temp/Perf_29_CPU_short.csv
+    statusmessagefilename temp/Perf_29_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+
+     
+ #
+ # 30 CPU - Short Test (10 Second Test)
+ #
+ flowtest 30
+    testname Perf_30_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_30_CPU
+    reportfilename temp/Perf_30_CPU_short.csv
+    statusmessagefilename temp/Perf_30_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 31 CPU - Short Test (10 Second Test)
+ #
+ flowtest 31
+    testname Perf_31_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_31_CPU
+    reportfilename temp/Perf_31_CPU_short.csv
+    statusmessagefilename temp/Perf_31_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 32 CPU - Short Test (10 Second Test)
+ #
+ flowtest 32
+    testname Perf_32_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_32_CPU
+    reportfilename temp/Perf_32_CPU_short.csv
+    statusmessagefilename temp/Perf_32_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 33 CPU - Short Test (10 Second Test)
+ #
+ flowtest 33
+    testname Perf_33_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_33_CPU
+    reportfilename temp/Perf_33_CPU_short.csv
+    statusmessagefilename temp/Perf_33_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 34 CPU - Short Test (10 Second Test)
+ #
+ flowtest 34
+    testname Perf_34_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_34_CPU
+    reportfilename temp/Perf_34_CPU_short.csv
+    statusmessagefilename temp/Perf_34_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 35 CPU - Short Test (10 Second Test)
+ #
+ flowtest 35
+    testname Perf_35_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_35_CPU
+    reportfilename temp/Perf_35_CPU_short.csv
+    statusmessagefilename temp/Perf_35_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 36 CPU - Short Test (10 Second Test)
+ #
+ flowtest 36
+    testname Perf_36_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_36_CPU
+    reportfilename temp/Perf_36_CPU_short.csv
+    statusmessagefilename temp/Perf_36_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no   
+     
+ #
+ # 37 CPU - Short Test (10 Second Test)
+ #
+ flowtest 37
+    testname Perf_37_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_37_CPU
+    reportfilename temp/Perf_37_CPU_short.csv
+    statusmessagefilename temp/Perf_37_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no 
+     
+ #
+ # 38 CPU - Short Test (10 Second Test)
+ #
+ flowtest 38
+    testname Perf_38_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_38_CPU
+    reportfilename temp/Perf_38_CPU_short.csv
+    statusmessagefilename temp/Perf_38_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no 
+     
+ #
+ # 39 CPU - Short Test (10 Second Test)
+ #
+ flowtest 39
+    testname Perf_39_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_39_CPU
+    reportfilename temp/Perf_39_CPU_short.csv
+    statusmessagefilename temp/Perf_39_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no 
+     
+ #
+ # 40 CPU - Short Test (10 Second Test)
+ #
+ flowtest 40
+    testname Perf_40_CPU_Short
+    connect 192.168.100.212
+    testtype THRUPUT
+    testtime 10
+    ReportAFGRTS 1:1:1:0:0:0
+    training NO
+    includegroups Perf_40_CPU
+    reportfilename temp/Perf_40_CPU_short.csv
+    statusmessagefilename temp/Perf_40_CPU_short.log
+    framesizes 64 128 200 256 350 384 440 448 500 512 1024 1280 1500 1518
+    DIEnabled no 

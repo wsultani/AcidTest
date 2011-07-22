@@ -1,0 +1,58 @@
+#!/usr/bin/expect --
+
+proc SF_NRSP_HALT {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test to see if bivio cpus get stuck at halt after doing a nrsp halt sys and then rebooting.}
+set ${p}(Suite)		{negative}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-04-21}
+set ${p}(EOL)		{}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+    set spawn_id $sid
+
+    set cmd "nrsp halt system" 
+    set exp "System is halted - Press ESC twice to reboot"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 45 20 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    exp_send \033
+    exp_send \033
+
+    set cmd ""          
+    set exp "login:"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 45 20 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # Loginto device and set the propmt
+    exp_send "\r"
+    sleep 5
+    set ret [$::dut bivio_general_expect root root]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # check nrsp list
+    set ret [$::dut bivio_nrsp_list normal]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+# this is required for auto loading
+package provide SF_NRSP_HALT 1.0

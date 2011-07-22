@@ -1,0 +1,183 @@
+#!/usr/bin/expect --
+
+proc BV_RPOWER_RESET {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Use the remote power and reset the dut, then check to see if it cam up ok. Includes added stackbus alignment check.}
+set ${p}(Suite)		{special}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut0 rpower_dut0}
+set ${p}(Created)	{08-04-04}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sid $::sid($::dut)
+    set prompt $::prompt($::dut)
+
+    upvar bv bvinfo
+
+    # store system info for comparison later.
+
+    set "cmd(nrinv)" "nrinv.*$prompt"
+    set "cmd(nrboard list)" "nrboard list.*$prompt"
+    set "cmd(nrsp list)" "nrsp list.*$prompt"
+    set "cmd(bvcmd -bp all cat /proc/xpcfpga |grep Stackbus)" "bvcmd.*$prompt"
+    set sbus "0x00000100"
+    set delay 40
+
+    foreach bv_cmd [lsort [array names cmd]] {
+
+        write_step "Check \"$bv_cmd\" before reboot."
+        set exp "$cmd($bv_cmd)"
+        set ret [send_expect_pair $sid $bv_cmd $exp $prompt 2 5 "" "noresend"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { [regexp {.*bvcmd.*} $bv_cmd match] } {
+            foreach line [ split [data_from $ret] "\n" ] {
+                if { [regexp {Stackbus\s+Alignment\s+(\S+)} $line match num] } {
+                    if { $num != $sbus } {
+                        write_error "Stackbus Alignement not equal to $sbus"
+                        return [list false "$ret"]
+                    }
+                }
+            }
+            write_step "Stackbus Alignement ok - $sbus"
+            continue
+        }
+
+        if { $bv_cmd == "nrinv" } {
+            set err_lst ""
+            foreach line [ split [data_from $ret] "\n" ] {
+                if { [regexp {Slot\s+(\S+)\s+} $line match slot] } {
+                    if { ![regexp {[TB]\d+} $slot match] } {
+                        lappend err_lst $slot
+                    }
+                }
+
+                if { [regexp {(BOX\s+U\d+)} $line match box] } {
+                    lappend err_lst $box
+                }
+            }
+
+            if { [llength $err_lst] > 0 } {
+                write_error "[llength $err_lst] errors detected during nrinv : $err_lst"
+                return [list false "$ret"]
+            }
+        }
+
+        set "pre($bv_cmd)" [data_from $ret]
+    }
+
+    if { [array names bvinfo -exact "Outlet"] == "" } {
+        set msg "Rpower outlets for $::dut not defined"
+        write_error "$msg"
+        return [list false "$msg"]
+    }
+
+    set outlet "$bvinfo(RemotePower)"
+
+    write_step "Resetting outlet $outlet"
+    set ret [$::rpower_dut0 rpower_reset_outlet $outlet $delay]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Check to see if bivio came up ok"
+    set bv_cmd {}
+    set exp "ogin:"
+    set ret [send_expect_pair $sid $bv_cmd $exp "" 25 20 "" "noresend"] 
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # Loginto device and set the propmt
+    set spawn_id $sid
+    exp_send "\r"
+    set ret [$::dut bivio_general_expect root root ]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Checking cpu states"
+    for {set i 0} {$i < 5} {incr i} {
+        set ret [$::dut bivio_nrsp_list default]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            sleep 30
+            continue
+        } else {
+            return [list true [data_from $ret]]
+        }
+    }
+
+    foreach bv_cmd [lsort [array names cmd]] {
+
+        write_step "Check \"$bv_cmd\" after reboot."
+        set exp "$cmd($bv_cmd)"
+        set ret [send_expect_pair $sid $bv_cmd $exp $prompt 5 5 "" "noresend"]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { [regexp {.*bvcmd.*} $bv_cmd match] } {
+            foreach line [ split [data_from $ret] "\n" ] {
+                if { [regexp {Stackbus\s+Alignment\s+(\S+)} $line match num] } {
+                    if { $num != $sbus } {
+                        write_error "Stackbus Alignement not equal to $sbus"
+                        return [list false "$ret"]
+                    }
+                }
+            }
+            write_step "Stackbus Alignement ok - $sbus"
+            continue
+        }
+
+        set "post($bv_cmd)" [data_from $ret]
+
+        #set "post($bv_cmd)" [regsub -all "CPU-6" $post($bv_cmd) "XXXXX"]
+        set ret [is_data_equal $pre($bv_cmd) $post($bv_cmd)]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true [data_from $ret]]
+}
+
+proc is_data_equal {pat1 pat2} {
+
+    set replace {[<>\s=\$~\[\]\\\d+]}
+    set result true
+
+    # check mismatch, and tag line with >>>>>.
+    set fmt {%-8s %-s}
+    set nout ""
+
+    foreach a [split $pat1 "\n"] b [split $pat2 "\n"] {
+        set a1 [string trim [regsub -all $replace $a ""]]
+        set b1 [string trim [regsub -all $replace $b ""]]
+
+        if { [string match "*$a1*" $b1] == "0"} {
+            append nout [format $fmt ">>>>>" "$b\n"]
+            set result false
+        } else {
+            append nout [format $fmt "" "$b\n"]
+        }
+    }
+
+    return [list $result "$pat1 $pat2 $nout"]
+}
+
+# this is required for auto loading
+package provide BV_RPOWER_RESET 1.0

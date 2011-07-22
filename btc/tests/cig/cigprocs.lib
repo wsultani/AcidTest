@@ -1,0 +1,304 @@
+#!/usr/bin/expect --
+
+proc cig_shared_code { } {
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+    set pc0_sid $::sid($::pc0)
+
+    upvar 2 pc lpc
+    set src_pc(obj) "$::pc0"
+    set src_pc(int) "$lpc(Interface)"
+    set src_pc(ip) "$lpc(InterfaceIP)"
+    set src_pc(sid) "$pc0_sid"
+
+    upvar coreideal lcoreideal
+    upvar ideal lideal
+    upvar cfgarr lcfg
+
+    # arrays to hold the statistics returned by show_stats, xlr
+    array set cpustats ""
+    array set xlrstats ""
+  
+    # default XML config files for CIG
+    set srcpc "192.168.2.30"
+    set conf_dir "/etc/bivio/bvcig/conf.d"
+    set transparent_xml "bvcig-oem-transparent.xml"
+    set mapping_xml "bivio-ifconfig-mappings.xml"
+    set default_transparent_xml [file join $conf_dir $transparent_xml]
+    set default_mapping_xml [file join $conf_dir $mapping_xml]
+
+    # testcase-specific XML config files for CIG
+    set testcase_xml $lcfg(testcase_xml)
+
+    # these check the args for computing the hash line
+    if { ![info exists lcfg(doctet)] } { set lcfg(doctet) 1 }
+    if { ![info exists lcfg(sport)] } { set lcfg(sport) "" }
+    if { ![info exists lcfg(dport)] } { set lcfg(dport) "" } 
+    if { ![info exists lcfg(getcore)] } { set lcfg(getcore) "FALSE" } 
+
+    #
+    # initial config
+    #
+    write_step "Loading $lcfg(cfg) config. Bringup all interfaces in transparent mode."
+    set ret [$lcfg(cfg)\_config $lcfg(rpmlst)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    #
+    # testcase specific config
+    #
+    if { $testcase_xml != "" } {
+        write_step "Copying \"$testcase_xml\" to \"$default_transparent_xml\""
+        set ret [$::dut bivio_wget $srcpc $testcase_xml $default_transparent_xml]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+
+    switch $lcfg(mode) {
+        sniff -
+        passive -
+        none {
+            write_step "Configuring CIG mapping to $lcfg(mode) only"
+            set ret [set_cig_map sniff]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+
+        inline -
+        active -
+        transparent {
+            write_step "Configuring CIG mapping to $lcfg(mode) only"
+            set ret [set_cig_map inline]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+
+        default {
+            write_step "Removing \"$default_mapping_xml\""
+            set ret [$::dut bivio_file_operation remove $default_mapping_xml ""]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }    
+
+            write_step "Reloading CIG"
+            set ret [$::dut bivio_cig_reload]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+    } ;# switch
+
+    #
+    # send traffic and verify counters
+    #
+    foreach pcap $lcfg(pcaplst) {
+        write_step "Clearing ALL counters"
+        #
+        # jenriq: did not use "initialize_counters all" to control the order.
+        # It seems better to initialize (i.e. reboot) XLR last as of 5.1.0.7
+        #
+        set ret [initialize_counters {io fulcrum cpus xlr}] 
+        if { [problem_with $ret data] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+
+        if { $lcfg(getcore) } {
+            write_step "Computing the destination CPU-core"
+            set ret [get_lb_cpucore [lsearch $lcfg(pcaplst) $pcap] $lcfg(doctet) $lcfg(sport) $lcfg(dport)]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+
+            set targetcpu [lindex $ret 1]
+            write_step "Defining RX expectation. $targetcpu: $lcfg(pkt_count); Others: \"0\""
+            array unset lcoreideal  
+            array set lcoreideal "" 
+            set lcoreideal($targetcpu\_rx) $lcfg(pkt_count)
+            set lcoreideal(total_rx) $lcfg(pkt_count)            
+        }
+
+        set cbuild [data_from [$::dut bivio_show_version]]
+        set ret [compare_builds "$cbuild" gt "5.0.7.2"]
+        if {![problem_with $ret] } {
+            write_info "$cbuild is post 5.0.7.2. Turning off pktreorder in XLR."
+            set cmd "pktreorder disable"
+            set exp ""
+
+            set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+            if { [problem_with $ret] } {
+                write_error [data_from $ret]
+                return [list false [data_from $ret]]
+            }
+        }
+
+        write_step "Starting tcpreplay on $src_pc(obj)\($src_pc(ip)\) from\
+        $src_pc(int) for $pcap"
+        set ret [$src_pc(obj) pc_tcpreplay_play $src_pc(int) $lcfg(mbps) $pcap]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    
+        ############## CPU STATS ##############
+        write_step "Getting the output from \"show_stats -c\""
+        set ret [get_showstats_c cpustats]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    
+        write_step "Checking the Rx and Tx packets of each CORE"
+        set ret [compare_stats_arrays cpustats lcoreideal]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    
+        ############# XLR STATS ##################
+        write_step "Getting the stats from XLR" 
+        set ret [get_xlr_s xlrstats]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    
+        write_step "Checking port RX and TX stats within XLR"
+        set ret [compare_stats_arrays xlrstats lideal]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    } ;# for-each
+
+    # 
+    # stop LS programs
+    #
+    write_step "Stopping $lcfg(cfg)"
+    set ret [$::dut bivio_nrsp_stop $lcfg(cfg)]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+} ;# proc
+
+proc cigreturn { lst } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Common proc to handle pre-return for all CIG testcases.}
+set ${p}(Arguments)     {lst}
+set ${p}(Return)        {n/a. Returns to wrapper in the end.}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-25}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {cigreturn MyList}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+
+    # default mapping
+    set map transparent
+
+    # define stock file and location
+    set srcpc {192.168.2.30}
+    set srcdir {automation/btc/tests/cig/xml}
+    set srcfile {bvcig-oem-transparent.xml}
+    set orig_xml [file join $srcdir $srcfile]
+
+    # define destination file on DUT
+    set conf_dir {/etc/bivio/bvcig/conf.d}
+    set transparent_xml {bvcig-oem-transparent.xml}
+    set default_transparent_xml [file join $conf_dir $transparent_xml]
+
+    # take snapshot of counters if result==fail
+    if { [lindex $lst 0] == "false" } {
+        write_step "Taking snapshots for troubleshooting"
+        # I/O, Fulcrum, CPUs
+        set cmd "show_stats -s"
+        set exp "Total.*$::prompt($::dut)"
+        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return -code return $ret
+        }
+
+        # XLR
+        set cmd "s"
+        set exp ""
+        set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return -code return $ret
+        }
+        set cmd "cpu"
+        set exp ""
+        set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return -code return $ret
+        }
+        set cmd "ts"
+        set exp ""
+        set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return -code return $ret
+        }
+    }
+
+    write_step "Copying \"$orig_xml\" to \"$default_transparent_xml\""
+    set ret [$::dut bivio_wget $srcpc $orig_xml $default_transparent_xml]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return -code return $ret
+    }
+
+    write_step "Setting system to $map mapping"
+    set ret [set_cig_map $map]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return -code return $ret
+    }
+   
+    # If pkt-reorder was disabled inside the TC, re-enable it here
+    set cbuild [data_from [$::dut bivio_show_version]]
+    set ret [compare_builds "$cbuild" gt "5.0.7.2"]
+    if {![problem_with $ret] } {
+        write_info "$cbuild is post 5.0.7.2. Re-enabling pktreorder prior to exit."
+        set cmd "pktreorder enable"
+        set exp ""
+
+        set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return -code return $ret
+        }
+    }
+
+    return -code return $lst
+} ;# proc
+
+package provide cigprocs 1.0

@@ -1,0 +1,1894 @@
+#!/usr/bin/expect --
+
+proc problem_with { out {data ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{takes a two element list and checks for presence error mesages. if the data agument is not empty it will check both element in the list for error messages. Otherwise it only checks the first element.}
+set ${p}(Arguments)	{out ?data?}
+set ${p}(Return)	{status data}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{problem_with $ret data}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set found_problem 0
+
+    set err_msgs {not found|ERROR|Warning|Fail}
+
+    if { [regexp -nocase {fail|bad|0|false} [lindex $out 0] match] } {
+        set found_problem 1
+    } 
+
+    if { [regexp -nocase {pass|good|1|true} [lindex $out 0] match] } {
+        set found_problem 0
+    }
+
+    if { [string length $data] > 0 } {
+        if { [regexp -nocase $err_msgs [lindex $out 1] match] } {
+	    set found_problem 1
+        }
+    }
+
+    return $found_problem
+}
+
+proc status_from { out } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Takes a two element list and returns the first element.}
+set ${p}(Arguments)	{out}
+set ${p}(Return)	{status}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{status_from $ret}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    return [lindex $out 0]
+}
+
+proc data_from { out } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{takes a two element list and returns the second element.}
+set ${p}(Arguments)	{out}
+set ${p}(Return)	{data}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{data_from $ret}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    return [lindex $out 1]
+}
+
+proc list_2_array { list aName } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{Takes a list and the Name of an existing array for uplevel. converts the list into data pairs and places then into the array.}
+set ${p}(Arguments)	{list aName}
+set ${p}(Return)	{}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{aName}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{list_2_array $lst arr}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    for {set x 0} { $x < [llength $list]} {incr x} {
+        array set v1 ""
+        set v1([lindex $list $x]) [lindex $list [expr $x + 1]]
+        incr x
+    }
+    uplevel "array set $aName {[array get v1]}"
+}
+
+proc check_usage { a1 a2 } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{takes 2 lists or arrays and checks to see if the first is a subset of the second.}
+set ${p}(Arguments)	{a1 a2}
+set ${p}(Return)	{}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{a1 a2}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{check_usage argv BAT}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    upvar $a1 var1
+    upvar $a2 var2
+
+    array set arr1 ""
+    array set arr2 ""
+    array set arr3 ""
+
+    if { ![array exists var1]} {
+        list_2_array $var1 arr1
+    } else {
+        array set arr1 [array get var1]
+    }
+
+    if { ![array exists var2] } {
+        list_2_array $var2 arr2
+    } else {
+        array set arr2 [array get var2]
+    }
+
+    set no_match 0
+    set match ""
+    set unknown ""
+    set required ""
+    set noreq ""
+
+    list_2_array [eval concat $arr2(Arguments)] arr3
+
+    # get the list of required args
+    foreach req [array names arr3] {
+        if { [regexp {\(required\)} $arr3($req) found] } {
+            lappend required $req
+        }
+    }
+
+    foreach i [array names arr1] {
+        set ret [array names arr3 -exact $i]
+        if {$ret == ""} {
+            incr no_match
+	    lappend unknown $i
+        } else {
+	    append match "$i \"$arr1($ret)\" "
+	}
+    }
+    set match [string trim $match]
+
+    foreach j $required {
+        if { [lsearch -regexp $match $j] < 0 } {
+            lappend noreq $j
+        }
+    }
+
+    if { $no_match > 0 || $match == "" || [llength $noreq] > 0 } {
+        if { $no_match > 0 } {
+            puts "\nERROR: Invalid argument : $unknown"
+        }
+
+        if { [llength $noreq] > 0 } {
+            puts "\nERROR: Need required args : $noreq"
+        }
+
+        puts "Description :\t\t$var2(Description)"
+        puts "Syntax :\t\t$var2(Syntax)"
+        puts "Available arguments are :\n"
+        set fmt {%-15s%s}
+        foreach pair $var2(Arguments) {
+            puts "\t[format $fmt "[lindex $pair 0]" "[lindex $pair 1]"]"
+        }
+        puts "\n"
+        return [list false ""]
+    } else {
+        return [list true $match]
+    }
+}
+
+proc flush_exp_buffer { sid } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{flushs the expect_out(buffer) for a session identified by the input}
+set ${p}(Arguments)	{sid}
+set ${p}(Return)	{}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{sid}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{flush_expect_buffer $spawn_id}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+if (0) {
+    set spawn_id $sid
+    set timeout 1
+    write_debug "flushing expect out buffer"
+
+    expect -re (.*)
+    match_max -d
+    flush $spawn_id
+    return [list true "$expect_out(buffer)"]
+}
+
+}
+
+proc send_expect_pair { sid send expect {chkprompt ""} retry timeout {nocr ""} {noresend ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{send a cmd to an open expect session and search the output for the expected string. If string is found return true else return false.}
+set ${p}(Arguments)	{sid send expect prompt retry timeout nocr noresend}
+set ${p}(Return)	{status data}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{send_expect_pair $sid($this) $mysql_cmd {(.*)Query OK(.*)} $prompt 2 1}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    # set the local retry for this method
+    set lretry $retry
+    set attempt 1
+
+    set spawn_id $sid
+
+    set send_human {.1 .3 1 .05 2}
+
+    match_max 1000000
+
+    if { $nocr != "" } {
+        set cmd $send
+    } else {
+        set cmd "$send\r"
+    }
+
+    flush_exp_buffer $spawn_id
+    write_sent "$cmd"
+    exp_send -h $cmd
+
+    while {$lretry > 0} {
+
+        expect {
+            -re ".*$expect.*" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Expected output ($expect) match successful"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -timeout $timeout timeout {
+                write_warning "Timedout waiting for : \"$expect\" - ($attempt/$retry)"
+
+                if { $chkprompt != "" } {
+                    exp_send "\r"
+                    expect -re "(.*)($chkprompt)(.*)" {
+                        write_received "$expect_out(0,string)"
+                        write_info "found prompt \($chkprompt)\)"
+                    }
+                }
+
+                if { $attempt != $retry && $noresend == "" } {
+                    write_sent "$cmd"
+                    exp_send -h "$cmd"
+                }
+
+                incr attempt
+                incr lretry -1
+                continue
+            }
+
+            eof {
+                expect -re (.*)
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $sid failed"
+                flush_exp_buffer $spawn_id
+                return [list "false" "$msg"]
+            }
+        }
+    }
+    write_error "[data_from [flush_exp_buffer $spawn_id]]"
+    return [list "false" "Expected output ($expect) not found"]
+}
+
+proc random_int_inrange {min max} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p 
+set ${p}(type)		{proc} 
+set ${p}(Description)	{generate random integer number in the range [min,max]}
+set ${p}(Arguments)	{min max}
+set ${p}(Return)	{status data}
+set ${p}(Suite)		{Utility} 
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{}
+set ${p}(Created)	{08-03-10}
+set ${p}(EOL)		{}
+set ${p}(Syntax)	{random_int_inrange 100 300}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    return [expr {int(rand()*($max-$min+1)+$min)}]
+}
+
+proc copy_file { src dst } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Copy source files to destination, soure and destination can be directories}
+set ${p}(Arguments)     {src dst}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-03-10}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {copy_result $resdir $::logdir}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    write_info "Copying $src to $dst"
+    if { [catch "file copy $src $dst" ret ] } {
+        write_error "could not copy file $src to $dst - $ret"
+        return [list false "$ret"]
+    }
+    return [list true "$ret"]
+}
+
+proc delete_file { lst } {
+    foreach l $lst {
+    write_info "Deleting file $l"
+        if { [catch "file delete -force -- $l" ret] } {
+            write_error "failed to delete $l - $ret"
+            return [list fail "$ret"]
+        }
+    }
+    return [list true "$ret"]
+}
+
+proc rename_file { src dst } {
+    write_info "Renamming $src to $dst"
+    if { [catch "file rename -force -- $src $dst" ret] } {
+        write_error "failed to move $src to $dst - $ret"
+        return [list fail "$ret"]
+    }
+    return [list true "$ret"]
+}
+
+proc start_subtest { sub_name } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {identify the start of the subtest. The following code will be considered\
+				as a subtest untill the end_subtest proc is called.}
+set ${p}(Arguments)     {sub_name}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-05-16}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {start_subtest CLI_SHOW_001::show_version}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    # replave any <> with correct code so html does not confuse for tag.
+    set sub_name_mod [regsub -all {\<} $sub_name {\&lt;}]
+    set sub_name_mod [regsub -all {\>} $sub_name_mod {\&gt;}]
+
+    array set ::sub_test ""
+    uplevel 2 {incr build(Total)}
+
+
+    set ::sub_test(parent) [namespace tail [lindex [info level 2] 0]]
+    set ::sub_test(Name) "$::sub_test(parent)::$sub_name_mod"
+
+    set ::warnings($::sub_test(Name)) ""
+
+    if { $::logging != 0 } {
+        set ::sub_test(parent_log) $::log
+
+        set timenow [clock format [clock seconds] -format {%H%M%S}]
+        set tclog "[regsub -all " " $sub_name "-"]-$timenow.log"
+        set ::sub_test(log) $tclog
+
+        set ret [custom_open_file $::sub_test(log) $::sub_test(Name) noclose]
+        if { [problem_with $ret] } {
+            write_warning "cannot open $::sub_test(log) - [data_from $ret]"
+        }
+    }
+    write_step "Started Sub test $::sub_test(Name)"
+}
+
+proc end_subtest { res {exit ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {identify the end of the subtest and restore parent environment}
+set ${p}(Arguments)     {res}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-05-16}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {end_subtest [list false $msg]}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    if { [problem_with $res] } {
+        set ::sub_test(Result) "FAIL"
+        uplevel 2 {incr build(FailCount)}
+        lappend ::sub_fails $::sub_test(Name)
+    } else {
+        set ::sub_test(Result) "PASS"
+        uplevel 2 {incr build(PassCount)}
+    }
+
+    if { $::logging != 0 } {
+        update_custom_summary ::sub_test
+        custom_close_file
+        set ::log $::sub_test(parent_log)
+    }
+
+    write_result "$::sub_test(Result)" $::sub_test(Name)
+    array unset ::sub_test
+
+    if { $exit != "" } {
+        return [analyze_subtest]
+    }
+}
+
+proc analyze_subtest { {ignore ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {analyse the results of the subtest}
+set ${p}(Arguments)     {ignore}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-05-16}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {return [analyze_subtest]}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    if { [info exists ::sub_fails] && [llength $::sub_fails] > 0 && $ignore == ""} {
+        set msg "Following subtests failed:\n"
+        foreach t $::sub_fails {
+            append msg "\t$t\n"
+        }
+        write_error "$msg"
+        set res [list false "$msg"]
+    } else {
+        if { $ignore != "" } {
+            set msg "Ignore is set! Marking test as passed even if failures encountered"
+            write_warning "$msg"
+        } else {
+            set msg "All subtests passed"
+            write_info "$msg"
+        }
+        set res [list true "$msg"]
+    }
+
+    if { [info exist ::sub_fails] } {
+        unset ::sub_fails
+    }
+    return $res
+}
+
+proc reset_console { server port {login "!root"} {pass "cosmo"} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Reset the console port on Livingston Portmaster}
+set ${p}(Arguments)     {server port login pass}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-07-07}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {reset_console 192.168.100.9 5015}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set console_prompt {>}
+    set portl [string length $port]
+
+    switch $portl {
+        4 {
+            if { [regexp "50(\\d+)" $port match lport] } {
+                set port "s[string trimleft $lport 0]"
+            }
+        }
+
+        2 {
+            set port "s[string trimleft $port 0]"
+        }
+
+        default {
+            set msg "Port number incorrect \($port\)"
+            write_error "$msg"
+            return [list false "$msg"]
+        }
+    }
+
+    write_info "Spawning telnet $server"
+    if { [catch "spawn telnet $server" reason] } {
+        write_error "Failed to connect to $server : $reason"
+        return [list false "$reason"]
+    }
+
+    # set the local retry for this method
+    set lretry 3
+    set attempt 1
+
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$login"
+                exp_send "$login\r"
+                exp_continue
+            }
+
+            -re "(.*)assword:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$pass"
+                exp_send "$pass\r"
+                exp_continue
+            }
+
+            -re (.*)$console_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($console_prompt)"
+                flush_exp_buffer $spawn_id
+                break
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$lretry)"
+                flush_exp_buffer $spawn_id
+                exp_send "\r"
+                incr attempt
+                incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $server $port failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+
+    set cmd "reset $port"
+    set exp "Resetting port.*$console_prompt"
+    set ret [send_expect_pair $spawn_id "$cmd" "$exp" "$console_prompt" 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+    write_info "$server $port reset complete"
+    return [list true ""]
+}
+
+proc compare_builds { buildA operation buildB } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {perforn the operation on the two builds}
+set ${p}(Arguments)     {buildA operation buildB}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {08-07-07}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {compare_builds 5.0.4.3 gt 5.0.4.2}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    if { [regexp {[0-9\.-]+} $buildA matcha] } {
+        set builda [split [string trim $matcha ".-"] ".-"]
+    } else {
+        return [list false ""]
+    }
+
+    if { [regexp {[0-9\.-]+} $buildB matchb] } {
+        set buildb [split [string trim $matchb ".-"] ".-"]
+    } else {
+        return [list false ""]
+    }
+
+    foreach a "$builda" b "$buildb" {
+
+        # if the build lengths are uneven then ignore.
+        if { $a == "" || $b == "" } {
+            continue
+        }
+
+        switch $operation {
+            "gt" {
+                set def [list false ""]
+                if { $a > $b } {
+                    return [list true "$buildA"]
+                }
+             }
+
+            "lt" {
+                set def [list false ""]
+                if { $a < $b } {
+                    return [list true "$buildA"]
+                }
+             }
+
+            "eq" {
+                set def [list true ""]
+                if { $a == $b } {
+                    continue
+                } else {
+                    return [list false ""]
+                }
+            }
+        }    
+    }
+    return $def
+}
+
+proc get_port_count { slot } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {get the number of ports in a perticular slot}
+set ${p}(Arguments)     {slot}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-01-21}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {get_port_count slot0}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set sdata "$::sys_info($slot)"
+    if { [regexp -nocase {(\d+)-port} "$sdata" match count] } {
+        return [list true $count]
+    } else {
+        return [list false "$sdata"]
+    }
+}
+
+proc get_slot_info { slot {field ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {get the count and speed of ports in a perticular slot}
+set ${p}(Arguments)     {slot}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-01-21}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {get_slot_info slot0}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set spawn_id $::sid($::dut)
+
+    if { ![regexp {[Ss]lot(\d+)} $slot match snum] } {
+        write_error "Coulnot determine slot number from $slot"
+        return [list false ""]
+    }
+
+    set bv_cmd "nrsp -c show s${snum}.e0"
+    set exp "$bv_cmd.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $spawn_id $bv_cmd "$exp" $::prompt($::dut) 3 4]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    foreach line [split [data_from $ret] "\n"] {
+        if { $field != "" && [regexp ".*$field.*:(.*)" $line match sval] } {
+            set val [string trim $sval]
+        }
+
+        if { [regexp {Hardware Type\s+:\s+(\S+)x(\d+)} $line match sspeed scount] } {
+            set count $scount
+            set speed $sspeed
+        }
+    }
+
+    if { $field != "" } {
+        if { [info exists val] } {
+            write_info "Found $field, Returning $val"
+            return [list true "$val"]
+        } else {
+            write_error "Expected field $field not found"
+            return [list false "[data_from $ret]"]
+        }
+    }
+
+    if { [info exists count] && [info exists speed] } {
+        return [list true "$count $speed"]
+    }
+
+    return [list false "[data_from $ret]"]
+}
+
+proc time_convert { from {to_unit ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {convert one time unit to another}
+set ${p}(Arguments)     {from to_unit}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-07-23}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {time_convert "10 seconds" to milliseconds}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set tosec(microseconds) 1000000
+    set tosec(milliseconds) 1000
+    set tosec(seconds) 1
+    set tosec(minutes) [expr 1.0 / 60]
+    set tosec(hour) [expr 1.0 / 3600]
+
+    if { ![regexp {([\d\.]+)\s?(\S+)} $from match num from_unit] } {
+        write_error "Cannot convert \"$from\" - incorrect format i.e. 10 microseconds"
+        return [list false ""]
+    } else {
+        lappend ulist $from_unit
+        set num [expr double($num)]
+    }
+
+    if { $to_unit != "" } {
+        lappend ulist $to_unit
+    }
+
+    foreach u $ulist {
+        if { [array names tosec "$u"] == "" } {
+            write_error "$u is an unknows unit - supported units are \" [array names tosec]\""
+            return [list false ""]
+        }
+    }
+
+    # convert the from value to seconds.
+    set nfrom [expr $num / $tosec($from_unit)]
+
+    if { $to_unit != "" } {
+        # now convert the seconds to the requested units.
+        set out "[expr $nfrom * $tosec($to_unit)]"
+        # round() and int() don't handle large numbers properly, using regexp instead.
+        set out "[regsub {(\d+)\.\d+} $out \\1] $to_unit"
+    } else {
+        # output the value in hh:mm:ss format.
+        set out [clock format [expr int($nfrom)] -gmt 1 -format %H:%M:%S]
+    }
+
+    return [list true "$out"]
+}
+
+proc match_pattern { pat1 pat2 } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {match two sets of patterns, ignores special chars and numbers.}
+set ${p}(Arguments)     {pat1 pat2}
+set ${p}(Return)        {status data}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-10-20}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {match_pattern $pre($bv_cmd) $post($bv_cmd)}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set replace {[<>\s=\[\]\\\d+]}
+    set result true
+
+    # check mismatch, and tag line with >>>>>.
+    set fmt {%-8s %-s}
+    set nout ""
+
+    foreach a [split $pat1 "\n"] b [split $pat2 "\n"] {
+        set a1 [regsub -all $replace $a ""]
+        set b1 [regsub -all $replace $b ""]
+
+        if { [string match "*$a1*" $b1] == "0"} {
+            append nout [format $fmt ">>>>>" "$b\n"]
+            set result false
+        } else {
+            append nout [format $fmt "" "$b\n"]
+        }
+    }
+
+    return [list $result "$pat1 $pat2 $nout"]
+}
+
+proc luniqueappend { listname args } {
+
+    # Same as the TCL command "lappend", but only adds unique values on the list.
+
+    foreach arg $args {
+        if { [lsearch -exact $listname $arg] == -1 } {
+            lappend listname $arg
+        }
+    }
+    return $listname
+}
+
+proc get_showstats_c { stats_arr } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Stores the output of "show_stats -c" into the arg --a global array-- which should be initialized to "" and passed by the calling proc. Here are the indices used for storing cpu stats: (1) coreName_rx e.g. cpu-1c0_rx ; (2) coreName_tx e.g. cpu-6c1_tx ; (3) e.g. cpu-1c0_rxdrop ; (4) e.g. cpu-1c0_txdrop. Also the totals are stored using the following indices: (5) total_rx ; (6) total_tx ; (7) total_rxdrop ; (8) total_txdrop.}
+set ${p}(Arguments)     {stats_arr}
+set ${p}(Return)        {status arrSize}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-10-30}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {get_showstats_c myArray}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set dut_sid $::sid($::dut)
+    upvar $stats_arr lstats
+
+    write_step "Performing show stats on DUT"
+    set cmd "show_stats -c"
+    set exp "Total.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Stuffing the array with packet stats per CORE"
+    foreach line [split [data_from $ret] "\n" ] {
+        #if the current line starts with 'CPU-NcN' get the stats
+        if { [regexp {CPU-(\w+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)} $line match\
+        corenum rx rxdrop tx txdrop] } {
+            set lstats(cpu-$corenum\_rx) $rx
+            set lstats(cpu-$corenum\_rxdrop) $rxdrop
+            set lstats(cpu-$corenum\_tx) $tx
+            set lstats(cpu-$corenum\_txdrop) $txdrop
+        }
+
+        #if the current line starts with 'Total:' get the stats
+        if { [regexp {Total:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)} $line match\
+        rx rxdrop tx txdrop] } {
+            set lstats(total_rx) $rx
+            set lstats(total_rxdrop) $rxdrop
+            set lstats(total_tx) $tx
+            set lstats(total_txdrop) $txdrop
+        }
+    }
+
+    set numrows [array size lstats]
+    write_step "Verifying our array size..Got $numrows rows"
+    if { $numrows == 0 } {
+        write_error "Could not get cpu stats - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    return [list true $numrows]
+}
+
+proc get_xlr_s { stats_arr } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Stores the output of "s" from the XLR console to the arg --a global array-- which should be initialized to "" and passed by the calling proc. Here are the indices used: (1) portName_rx e.g. s0.e0_rx ; (2) portName_tx e.g. s1.e1_tx ; (3) stack_rx ; (4) dropped_rx ; (5) dropped_tx.}
+set ${p}(Arguments)     {stats_arr}
+set ${p}(Return)        {status arrSize}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-10-30}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {get_xlr_s myArray}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set dut_sid $::sid($::dut)
+    upvar $stats_arr lstats
+
+    write_step "Sending 's' to DUT's XLR console"
+    set cmd "s"
+    set exp "GMAC.*"
+
+    set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Stuffing the array with XLR counters per interface"
+    foreach line [split [data_from $ret] "\n" ] {
+        # If the current line starts with 'sN.eN' get the stats
+        if { [regexp {s(\d+).e(\d+)\s+(\d+)\s+(\d+)} $line match\
+        slot port rx tx] } {
+            set lstats(s$slot\.e$port\_rx) $rx
+            set lstats(s$slot\.e$port\_tx) $tx
+        }
+
+        # Get the RX from stack
+        if { [regexp {Stack\sreceived\s(\d+)\sPackets} $line match stack_rx] } {
+            set lstats(stack_rx) $stack_rx
+        }
+
+        # Get the RX and TX dropped count
+        if { [regexp {Dropped:\s+Ingress\s=\s(\d+)(\sEgress\s=\s(\d+))?}\
+        $line match dropped_rx dummy dropped_tx] } {
+            set lstats(dropped_rx) $dropped_rx
+            set lstats(dropped_tx) $dropped_tx
+        }
+    }
+
+    set numrows [array size lstats]
+    write_step "Verifying our array size"
+    if { $numrows == 0 } {
+        write_error "Could not get XLR port counters - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    set msg "Global array \"$stats_arr\" now has $numrows elements"
+    write_info $msg
+    return [list true $numrows]
+}
+
+proc fill_ip { ip mask } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Get an ip and mask and increment the octate represented by the x in the mask}
+set ${p}(Arguments)     {ip mask}
+set ${p}(Return)        {status ip}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-19}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {fill_ip 192.168.1.2 192.168.x.2}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    if { [llength $ip] != [llength $mask] } {
+        write_error "$ip and $mask need to be same length"
+        return [list false ""]
+    }
+
+    if { ![regexp {(.*)[xX](.*)} $mask match pre post] } {
+        write_error "can't find target value to fill in $mask"
+        return [list false ""]
+    }
+
+    if { ![regexp "${pre}(.*)$post" $ip match target] } {
+        write_error "can't find target value to fill in $ip"
+        return [list false ""]
+    }
+
+    set out [incr target]
+    return [list "true" "$pre$out$post"]
+}
+
+proc linux_ping { sid dst count {prompt ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {perform a ping for the sid provided}
+set ${p}(Arguments)     {sid src count prompt}
+set ${p}(Return)        {status {sent rec loss}}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-19}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {linux_ping $spawn_id 192.168.1.2 10}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set allow_loss 0
+
+    # calculate how long to wait for ping responce.
+    set wait [expr 2 * $count]
+
+    # the command to exec.
+    set cmd "/bin/ping -c $count $dst"
+    set exp "$dst ping statistics.*$prompt"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 2 $wait "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # get the ping stats.
+    if { ![regexp {(\d+) packets transmitted, (\d+) received, (\d+%) packet loss} [data_from $ret] match sent rec loss] } {
+        write_error "Could not determin $dst ping statistics"
+        return [list false [data_from $ret]]
+    }
+
+    # check the packet loss
+    if { [regsub "%" $loss ""] > 0 } {
+        write_error "Packet loss \($loss\) is greater then $allow_loss%"
+        return [list false [data_from $ret]]
+    }
+
+    return [list "true" "$sent $rec $loss"]
+}
+
+proc linux_route_del_all { sid net mask {prompt ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {delete all routes to a network}
+set ${p}(Arguments)     {sid net mask prompt}
+set ${p}(Return)        {status}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-19}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {linux_route_del_all $pc1_sid 10.10.1.0 255.255.255.0}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set cmd "route"
+    set exp "$cmd.*$prompt"
+    set ret [send_expect_pair $sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set gw_lst ""
+    foreach line [split [data_from $ret] "\n"] {
+        if { [regexp "$net\\s+(\\S+)\\s+$mask" $line match tgw] } {
+            lappend gw_lst "$tgw"
+        }
+    }
+
+    foreach gw $gw_lst {
+        set ret [linux_edit_route $sid del $net $mask $gw 1 $prompt] 
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            return [list false [data_from $ret]]
+        }
+    }
+    return [list true [data_from $ret]]
+}
+
+proc linux_edit_route { sid action net mask gw metric {prompt ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {perform the route action on a linux prompt}
+set ${p}(Arguments)     {sid action net mask gw metric prompt}
+set ${p}(Return)        {status}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-19}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {linux_edit_route $pc1_sid add 10.10.1.0 255.255.255.0 $dut_egress 1}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    switch $action {
+        add {
+            set cmd "route add -net $net netmask $mask gw $gw metric $metric"
+        }
+    
+        del {
+            set cmd "route del -net $net netmask $mask gw $gw metric $metric"
+        }
+
+        default {
+            write_error "incorrect/no action defined for route : $action"
+            return [list false $action]
+        }
+    }
+
+    write_step "Preparing to $action route on $sid"
+    set exp "$prompt"
+
+    set ret [send_expect_pair $sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "route"
+    set exp "$cmd.*$prompt"
+    set ret [send_expect_pair $sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    set found 0
+    foreach line [split [data_from $ret] "\n"] {
+
+        if { [regexp "$net\\s+.$gw\\s+$mask" $line match] } {
+            incr found
+        }
+    }
+
+    if { $found == 1 && $action == "add" } {
+        write_info "Route added successfully"
+        return [list true [data_from $ret]]
+    }
+
+    if { $found == 0 && $action == "del" } {
+        write_info "Route deleted successfully"
+        return [list true [data_from $ret]]
+    }
+
+    return [list false [data_from $ret]]
+}
+
+proc clear_xlr_stats { } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Sends "c" to the XLR console thereby clearing port stats.}
+set ${p}(Arguments)     {none}
+set ${p}(Return)        {status}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-13}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {clear_xlr_stats}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set dut_sid $::sid($::dut)
+
+    write_step "Sending 'c' to DUT's XLR console"
+    set cmd "c"
+    set exp ".*Clearing SPI4 Statistics.*"
+
+    set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_info "Sending 's' to DUT's XLR console"
+    set cmd "s"
+    set exp "GMAC.*"
+
+    set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Verifying that XLR's interface stats were cleared"
+    foreach line [split [data_from $ret] "\n" ] {
+        # If the current line starts with 'sN.eN' check the stats
+        if { [regexp {s(\d+).e(\d+)\s+(\d+)\s+(\d+)} $line match\
+        slot port rx tx] } {
+            if { $rx != 0 || $tx != 0 } {
+                write_error "s$slot.e$port RX,TX not zero: $rx\,$tx"
+                return [list false [data_from $ret]]
+            }
+        } ;# if regexp
+
+        # Check the RX and TX dropped count
+        if { [regexp {Dropped:\s+Ingress\s=\s(\d+)(\sEgress\s=\s(\d+))?}\
+        $line match dropped_rx dummy  dropped_tx] } {
+            if { $dropped_rx != 0 || $dropped_tx != 0 } {
+                write_error "Dropped RX,TX not zero: $dropped_rx\,$dropped_tx"
+                return [list false [data_from $ret]]
+            }
+        } ;# if regexp
+    } ;# foreach
+
+    write_info "XLR console stats cleared successfully"
+    return [list true ""]
+} ;# proc
+
+proc compare_stats_arrays { result_arr ideal_arr } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Compares an array holding the result from "show_stats -c" (or "s" from XLR console) vs. an ideal array. If no element from the ideal array matches the element from the result, comparison to "0" is made.}
+set ${p}(Arguments)     {result_arr ideal_arr}
+set ${p}(Return)        {status}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-17}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {compare_stats_arrays MyResultArray MyIdealArray}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    upvar $result_arr result_stats
+    upvar $ideal_arr ideal_stats
+
+    write_step "Comparing results \"$result_arr\" with ideal \"$ideal_arr\""
+    foreach element [lsort [array names result_stats]] {
+        if { [info exists ideal_stats($element)] } {
+            # ideals exist..verify if results measure-up
+
+            # establish our tolerance
+            switch -regexp -- $element {
+                {.*_rx} { 
+                    if { [info exists ideal_stats(rx_tolerance)] } {
+                        set tolerance $ideal_stats(rx_tolerance) 
+                    }
+                }
+                {.*_tx} { 
+                    if { [info exists ideal_stats(tx_tolerance)] } {
+                        set tolerance $ideal_stats(tx_tolerance) 
+                    }
+                }
+            } ;# switch
+            if { ![info exists tolerance] } { set tolerance 0 } 
+
+            # Establish the min-max count based on tolerance 
+            set min_pkt_count [expr {$ideal_stats($element) - $tolerance}]
+            if { $min_pkt_count < 0 } {
+                set min_pkt_count 0
+            }
+            set max_pkt_count [expr {$ideal_stats($element) + $tolerance}]
+
+            # do the comps
+            if { $result_stats($element) < $min_pkt_count ||\
+            $result_stats($element) > $max_pkt_count } {
+                set msg "$element is $result_stats($element) but\
+                expected between $min_pkt_count-$max_pkt_count"
+                write_error $msg
+                return [list false $msg]
+            }
+            write_debug "$element: $result_stats($element) is between\
+            $min_pkt_count-$max_pkt_count"
+        } else {
+            # no ideals..verify that result is "0"
+
+            if { $result_stats($element) != 0 } {
+                set msg "$element is $result_stats($element). Expected \"0\""
+                write_error $msg
+                return [list false $msg]
+            }
+            write_debug "$element: $result_stats($element) equals \"0\""
+        } ;# if info
+    } ;# foreach
+
+    return [list true ""]
+}
+
+proc linux_test_connect {sid method dst user passwrd {prompt ""}} {
+
+    set spawn_id $sid
+
+    set send_human {.1 .3 1 .05 2}
+    set gretry 3
+    set lretry $gretry
+    set attempt 1
+
+    switch $method {
+        "ssh" {
+            set cmd "$method $user@$dst"
+
+            set sshfile "/root/.ssh/known_hosts"
+
+            # delete the ssh keys.
+            write_step "Deleting ssh key file $sshfile"
+            set lcmd "rm -rf $sshfile"
+            set ret [send_expect_pair $spawn_id "$lcmd" "" "$prompt" 2 5]
+            if { [problem_with $ret] } {
+                write_error "Unable to clear ssh key file $sshfile - [data_from $ret]"
+                return [list false [data_from $ret]]
+            }
+        }
+        "telnet" {
+            set cmd "$method $dst"
+        }
+        "ftp" {
+            set cmd "$method $dst"
+        }
+        default {
+            set method "telnet"
+            set cmd "$method $dst"
+        }
+    }
+
+    flush_exp_buffer $spawn_id
+    exp_send "$cmd\r"
+    write_sent "$cmd"
+
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Escape character is(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                exp_send -h "\r"
+                exp_continue
+            }
+
+            -nocase "(.*)connection refused(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection refused"
+                flush_exp_buffer $spawn_id
+                exp_send -h "exit\r"
+                return [list "false" "$msg"]
+            }
+
+            -re "(.*)you sure you want to continue connecting(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent {yes}
+                exp_send -h "yes\r"
+                exp_continue
+            }
+
+            -re "(.*)ogin successful(.*)ftp>" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+
+                write_sent "exit"
+                exp_send -h "exit\r"
+                expect {
+                    -re "Goodbye" {
+                        flush_exp_buffer $spawn_id
+                        return [list "true" "$msg"]
+                    }
+
+                    -timeout 5 timeout {
+                        write_warning "Timedout waiting for logout"
+                        flush_exp_buffer $spawn_id
+                        exp_send -h "\r"
+                        exp_continue
+                    }
+                }
+            }
+
+            -re "Last(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+
+                set try 5
+
+                while {$try > 0} {
+                    write_sent "exit"
+                    exp_send -h "exit\r"
+                    expect {
+                        -re "logout" {
+                            set msg $expect_out(buffer)
+                            write_received "$msg"
+                            flush_exp_buffer $spawn_id
+                            return [list "true" "$msg"]
+                        }
+
+                        -re "Connection(.*)closed" {
+                            set msg $expect_out(buffer)
+                            write_received "$msg"
+                            flush_exp_buffer $spawn_id
+                            return [list "true" "$msg"]
+                        }
+
+                        -timeout 5 timeout {
+                            write_warning "Timedout waiting for logout \($try\)"
+                            flush_exp_buffer $spawn_id
+                            exp_send -h "\r"
+                            incr try -1
+                        }
+                    }
+                }
+            }
+
+            -re "(.*)You are now logged in to(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+
+                set try 5
+
+                while {$try > 0} {
+                    write_sent "exit"
+                    exp_send -h "exit\r"
+                    expect {
+                        -re "logout" {
+                            set msg $expect_out(buffer)
+                            write_received "$msg"
+                            flush_exp_buffer $spawn_id
+                            return [list "true" "$msg"]
+                        }
+
+                        -re "Connection(.*)closed" {
+                            set msg $expect_out(buffer)
+                            write_received "$msg"
+                            flush_exp_buffer $spawn_id
+                            return [list "true" "$msg"]
+                        }
+
+                        -timeout 5 timeout {
+                            write_warning "Timedout waiting for logout \($try\)"
+                            flush_exp_buffer $spawn_id
+                            exp_send -h "\r"
+                            incr try -1
+                        }
+                    }
+                }
+            }
+
+            -re "(.*)Name(.*):" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+                exp_continue
+            }
+
+            -re "(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+                exp_continue
+            }
+
+            -re "(.*)assword:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$passwrd"
+                exp_send -h "$passwrd\r"
+                exp_continue
+            }
+
+            -re "ftp>" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "exit"
+                exp_send -h "exit\r"
+            }
+
+            -timeout 30 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                incr attempt
+                incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                exp_send -h "exit\r"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+
+    flush_exp_buffer $spawn_id
+    #exp_send -h "exit\r"
+    return [list "false" ""]
+}
+
+proc get_lb_cpucore {soctet doctet {sport ""} {dport ""} {corecount 12}} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Computes the hash+0 and dest-cpu-core given 2-tuple or 4-tuple LB parameters}
+set ${p}(Arguments)     {soctet doctet sport dport corecount}
+set ${p}(Return)        {status dest_cpu_core hash}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-12-07}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {get_lb_cpucore 0 1 5000 6000}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    write_step "Computing: hash = $soctet ^ $doctet ^ $sport ^ $dport"
+    if { [catch {
+        set soctet [expr $soctet & 255] ;# get 4th octet
+        set doctet [expr $doctet & 255] ;# get 4th octet
+
+        if { ($sport != "") && ($dport != "") } {
+            set hash [expr {($soctet ^ $doctet ^ $sport ^ $dport) & 255}]
+        } else {
+            set hash [expr {($soctet ^ $doctet) & 255}]
+        }
+        write_info "Computed \"hash+0\" is $hash"
+
+        set hash [expr {$hash % $corecount}]
+        write_info "Computed CPU number is $hash (from pool of $corecount)"
+
+        set targetcpu "cpu-[expr {($hash / 2) + 1}]c[expr {$hash % 2}]"
+        write_step "Traffic should be directed to $targetcpu by XLR"
+    } err] } {
+        write_error "$err"
+        return [list "false" $err]
+    } ;# ifcatch
+
+    return [list "true" $targetcpu $hash]
+}
+
+proc initialize_counters { {type "io fulcrum cpus xlr"} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {Clears the counters of argument. If no argument is passed, "all" is assumed. Arguments could be the word all OR any combination of these: io fulcrum xlr cpus.}
+set ${p}(Arguments)     {io fulcrum xlr cpus all}
+set ${p}(Return)        {status}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {jenriq}
+set ${p}(Required)      {}
+set ${p}(Created)       {10-02-17}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {initialize_counters xlr}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    set dut_sid $::sid($::dut)
+
+    if { [llength $type] == 0 } {
+        set msg "List to clear is empty"
+        write_error $msg 
+        return [list false $msg]
+    }
+    if { $type == "all" } {
+        set type [list io fulcrum cpus xlr]
+    }
+    write_debug "Clearing stats of: '$type'"
+
+    foreach which1 $type {
+        switch $which1 {
+            c -
+            cpu  -
+            cpus -
+            mccp {
+                write_info "Gathering MCCP stats of CPUs"
+                set cmd "show_stats -c"
+                set exp "Total.*$::prompt($::dut)"
+            
+                set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+            
+                write_step "Checking the CPU MCCP counters"
+                foreach line [split [data_from $ret] "\n" ] {
+                    #if the current line starts with 'Total:' check the stats
+                    if { [regexp {Total:\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)} $line match rx rxdrop tx txdrop] } {
+                        if { $rx != "0" || $tx != "0" || $rxdrop != "0" || $txdrop != "0" } {
+                            write_info "Resetting all CPUs to clear counters"
+                            set ret [$::dut bivio_nrsp_reset default all]
+                            if { [problem_with $ret data] } {
+                                write_error [data_from $ret]
+                                return [list false [data_from $ret]]
+                            } 
+
+                            write_step "Reboot of CPUs to clear counters, done" 
+
+                        } else {
+                            
+                            # Since we're checking the Totals row and everything
+                            # is zero, we can safely assume that all cores' counters
+                            # are zero
+                            
+                            write_step "CPU counters already equal 0" 
+                        } ;# else 
+                    } 
+                } ;# foreach
+            } 
+        
+            x -
+            xlr {
+                write_info "Gathering stats from XLR console"
+                set cmd "s"
+                set exp "GMAC.*"
+
+                set ret [$::dut bivio_fpga_send_expect $cmd $exp]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+
+                write_step "Checking if XLR's stats were cleared already"
+                foreach line [split [data_from $ret] "\n" ] {
+                    # If the current line starts with 'sN.eN' check the stats
+                    if { [regexp {s(\d+).e(\d+)\s+(\d+)\s+(\d+)} $line match\
+                    slot port rx tx] } {
+                        if { $rx != 0 || $tx != 0 } {
+                            write_step "Rebooting XLR to clear stats"
+                            set ret [$::dut bivio_reboot_xlr]
+                            if { [problem_with $ret] } {
+                                write_error [data_from $ret]
+                                return [list "false" [data_from $ret]]
+                            } ;# if
+
+                            # XLR was just rebooted--no need to check the rest
+                            break
+
+                        } ;# if-rx
+                        
+                        # Unlike the cpu stats, there is no "totals" row in the XLR
+                        # stats. Feature request?
+
+                    } ;# if-regexp
+                } ;# foreach
+
+                write_step "XLR console stats initialized"
+            }
+        
+            i -
+            i-o -
+            i/o -
+            io {
+                write_step "Clearing interface (I/O) stats"
+
+                # get list of slots to clear stats
+                set slotlist [array get ::sys_info Slot*]
+                write_debug "Clearing stats for: $slotlist"
+
+                foreach "slot nim" $slotlist {
+                    # if this slot has "something" do "cat /proc/sN" twice
+                    if { $nim != "empty" } {
+    
+                        set cmd "cat /proc/s[string trimleft $slot Slot]"
+                        set exp "$cmd.*$::prompt($::dut)"
+                
+                        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                        if { [problem_with $ret] } {
+                            write_error [data_from $ret]
+                            return [list false [data_from $ret]]
+                        }
+                     
+                        # resend to clear the i/o counters
+                        set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                        if { [problem_with $ret] } {
+                            write_error [data_from $ret]
+                            return [list false [data_from $ret]]
+                        }
+                    }
+                }
+
+                set cmd "show_stats -i"
+                set exp "$cmd.*$::prompt($::dut)"
+
+                set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+            
+                write_info "Verifying if interface stats were cleared"
+                foreach line [split [data_from $ret] "\n" ] {
+                    #if the current line starts with 'eN' check the stats
+                    if { [regexp {(e\d+)\s+(\d+)\s+(\d+)} $line match interf rx tx] } {
+                        # if either rx or tx counter not zero, error out
+                        if { $rx != "0" || $tx != "0" } {
+                            #
+                            # get show_stats again for troubleshooting
+                            #
+                            sleep 5 ;# sleep before
+                            set cmd "show_stats"
+                            set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                            if { [problem_with $ret] } {
+                                write_error [data_from $ret]
+                                return [list false [data_from $ret]]
+                            }
+
+                            set msg "Actual $interf RX: $rx TX: $tx. Expected RX: 0 TX: 0." 
+                            write_error $msg  
+                            return [list false $msg]
+                        } ;# (if) 
+                    }  
+                } ;# (foreach)
+                write_step "Interface stats cleared successfully"
+            }
+        
+            f -
+            fulcrum {
+                write_step "Clearing Fulcrum counters"
+                set cmd "echo reset > /proc/fulcrum"
+                set exp ""
+            
+                set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                } 
+
+                set cmd "show_stats -s"
+                set exp "$cmd.*$::prompt($::dut)"
+                write_debug "Sending $cmd" 
+            
+                set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                if { [problem_with $ret] } {
+                    write_error [data_from $ret]
+                    return [list false [data_from $ret]]
+                }
+            
+                write_info "Verifying if fulcrum stats were cleared"
+                foreach line [split [data_from $ret] "\n" ] {
+                    #if current line contains "Fulcrum" check the stats
+                    if { [regexp {(.*Fulcrum.*\)).*\s+(\d+)} $line match desc rx] } {
+
+                        # if rx counter not zero, error out
+                        if { $rx != "0" } {
+                            #
+                            # get show_stats again for troubleshooting
+                            #
+                            sleep 5 ;# sleep before
+                            set cmd "show_stats -s"
+                            set exp "$cmd.*$::prompt($::dut)"
+
+                            set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                            if { [problem_with $ret] } {
+                                write_error [data_from $ret]
+                                return [list false [data_from $ret]]
+                            }
+                           
+                            # also get the output of cat /proc/fulcrum
+                            set cmd "cat /proc/fulcrum"
+                            set exp "$cmd.*$::prompt($::dut)"
+
+                            set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+                            if { [problem_with $ret] } {
+                                write_error [data_from $ret]
+                                return [list false [data_from $ret]]
+                            }
+
+                            set msg "$desc Actual: $rx. Expected: 0."  
+                            write_error $msg  
+                            return [list false $msg]
+                        } ;# (if) 
+                    }  
+                } ;# (foreach)
+
+                write_step "Fulcrum counters cleared successfully"
+            }
+        
+            default {
+                set msg "Unknown counter to clear \"$which1\"" 
+                write_error $msg  
+                return [list false $msg]
+            } 
+        
+        }
+    }
+
+    return [list true ""]
+}
+
+proc linux_tftp_get { sid server file {prompt ""} } {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)          $p
+set ${p}(type)          {proc}
+set ${p}(Description)   {tftp a file from a tftp server}
+set ${p}(Arguments)     {sid server file prompt}
+set ${p}(Return)        {true or false}
+set ${p}(Suite)         {Utility}
+set ${p}(Comments)      {}
+set ${p}(Author)        {wsultani}
+set ${p}(Required)      {}
+set ${p}(Created)       {09-11-19}
+set ${p}(EOL)           {}
+set ${p}(Syntax)        {linux_tftp_get $sid 192.168.120.1 "ROMOdessa/romext_2.63.bin" $prompt}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    write_step "tftping $file from $server"
+
+    set cmd "tftp -v $server -c get $file"
+    set exp "Received .* bytes in .* seconds"
+
+    set ret [send_expect_pair $sid $cmd $exp "$prompt" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_info "Checking to see if file transfer was successful"
+
+    set cmd "ls"
+    set exp "[file tail $file]"
+
+    set ret [send_expect_pair $sid $cmd $exp "$prompt" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+package provide btc_utils 1.0

@@ -1,0 +1,38 @@
+#!/usr/bin/expect --
+
+proc RAID_HW_001 {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Just a development testcase, use this proc to build and test development testcases}
+set ${p}(Suite)		{Test}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut}
+set ${p}(Created)	{08-04-21}
+set ${p}(EOL)		{}
+#update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+    set sid $::sid($::dut)
+
+    set cmd "nrscsi hw-status" 
+    set exp "$cmd.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $sid $cmd $exp "$::prompt($::dut)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    if { [regexp "bivio.xml" [data_from $ret] match] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "No bivio.xml error msg found"
+
+    return [list true ""]
+}
+# this is required for auto loading
+package provide RAID_HW_001 1.0

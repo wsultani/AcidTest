@@ -1,0 +1,120 @@
+#main {
+	border: 1px solid #666;
+	border-bottom: none;
+	border-left: none;
+	border-right: none;
+	clear: both;
+	background: #FFF3B3;
+}
+
+#contents {
+	border: 1px solid #666;
+	border-top: none;
+
+	//padding: 1.5em;
+	background: #FFFDF3;
+	//min-height: 300px;
+}
+
+
+/*******************************************************************************************************/
+
+
+ul#primary {
+	position: relative;
+	margin: 0;
+	padding: 0;
+	bottom: -5px;
+	width: 45em; /* a width is required for Opera, older Mozilla browsers, and Konqueror browsers */
+	z-index: 1;
+}
+
+ul#primary li  {
+	display: inline;
+	list-style: none;
+}
+
+ul#primary a, ul#primary span, ul#primary a.current {
+	width: 8em;
+	display: block;
+	float: left;
+	padding: 4px 0;
+	margin: 1px 2px 0 0;
+	text-align: center;
+	font-family: tahoma, verdana, sans-serif;
+	font-size: 100%;
+	text-decoration: none;
+	color: #333;
+}
+
+ul#primary span, ul#primary a.current, ul#primary a.current:hover {
+	border: 1px solid #666;
+	border-bottom: none;
+	background: #FFF3B3;
+	padding-bottom: 6px;
+	margin-top: 0;
+}
+
+ul#primary a {
+	background: #FFFAE1;
+	border: 1px solid #AAA;
+	border-bottom: none;
+}
+
+ul#primary a:hover {
+	margin-top: 0;
+	border-color: #666;
+	background: #FFF7CD;
+	padding-bottom: 5px;
+}
+
+
+/*******************************************************************************************************/
+
+
+ul#secondary {
+	background: #FFF3B3;
+	height: 2em;
+	position: relative;
+	margin: 0;
+	padding: 0;
+	width: 50em; /* a width is required for Opera, older Mozilla browsers, and Konqueror browsers */
+}
+
+ul#secondary li  {
+        display: inline;
+        list-style: none;
+}       
+
+ul#secondary li a, ul#secondary li span {
+	width: auto;
+	display: block;
+	float: left;
+	padding: 0 10px;
+	margin: 5px 0 5px 0;
+	text-align: auto;
+	border: none;
+	border-right: 1px dotted #AAA;
+	background: none;
+
+}
+
+ul#secondary li a {
+	color: #06C;
+	text-decoration: underline;
+}
+
+ul#secondary li a:hover {
+	color: #333;
+	background: transparent;
+	padding: 0 10px;
+	border: none;
+	border-right: 1px dotted #AAA;
+}
+
+ul#secondary li a:active {
+	color: #000;
+	background: transparent;
+}
+
+ul#secondary li:last-child a { border: none; }

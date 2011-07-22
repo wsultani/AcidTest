@@ -1,0 +1,793 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000229         
+APC1            : 13                  
+APC1ROM         : 2.45s               
+APCCount        : 1                   
+BackPlane0      : 11                  
+Build           : 5.0.7-3 NCCS 1.3.2-0.201102281621 FC5 ZCP System
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45s               
+NPC0Serial      : 7NPC-000568         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45s/2.45s         
+Shell           : Bivio CLI           
+Slot0           : 12-port Harrier 10/100/1000 Card
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(configure)} {
+?
+  commit    Enforce the candidate configuration into production
+  copy      Copy a configuration
+  export    Export local file configuration to a remote host
+  import    Import configuration from remote host
+  load      Load configuration from a local file
+  terminal  Execute configuration session
+
+[D
+}
+####################################################################################################
+set {CLI(configure commit)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy)} {
+?
+  candidate     candidate
+  custom        custom
+  factory       factory
+  provisioning  Copy provisioning templates to file
+  running       running
+  startup       startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate)} {
+?
+  all                Writes all configurations to file
+  platform           Writes platform specific configuration to file
+  system             Writes system configuration to file
+  to                 Destination
+  urlOverridingList  Writes url overriding list content to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate all)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate all to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate all to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate platform)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate platform to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate platform to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate system)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate system to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate system to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate to)} {
+?
+  candidate  candidate
+  custom     custom
+  startup    startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate to candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate to custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate to startup)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate urlOverridingList)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate urlOverridingList to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy candidate urlOverridingList to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom)} {
+?
+  all                Writes all configurations to file
+  platform           Writes platform specific configuration to file
+  system             Writes system configuration to file
+  to                 Destination
+  urlOverridingList  Writes url overriding list content to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom all)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom all to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom all to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom platform)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom platform to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom platform to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom system)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom system to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom system to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom to)} {
+?
+  candidate  candidate
+  custom     custom
+  startup    startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom to candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom to custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom to startup)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom urlOverridingList)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom urlOverridingList to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy custom urlOverridingList to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory)} {
+?
+  all                Writes all configurations to file
+  platform           Writes platform specific configuration to file
+  system             Writes system configuration to file
+  to                 Destination
+  urlOverridingList  Writes url overriding list content to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory all)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory all to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory all to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory platform)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory platform to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory platform to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory system)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory system to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory system to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory to)} {
+?
+  candidate  candidate
+  custom     custom
+  startup    startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory to candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory to custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory to startup)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory urlOverridingList)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory urlOverridingList to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy factory urlOverridingList to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy provisioning)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy provisioning to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy provisioning to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running)} {
+?
+  all                Writes all configurations to file
+  platform           Writes platform specific configuration to file
+  system             Writes system configuration to file
+  to                 Destination
+  urlOverridingList  Writes url overriding list content to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running all)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running all to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running all to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running platform)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running platform to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running platform to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running system)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running system to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running system to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running to)} {
+?
+  candidate  candidate
+  custom     custom
+  startup    startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running to candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running to custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running to startup)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running urlOverridingList)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running urlOverridingList to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy running urlOverridingList to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup)} {
+?
+  all                Writes all configurations to file
+  platform           Writes platform specific configuration to file
+  system             Writes system configuration to file
+  to                 Destination
+  urlOverridingList  Writes url overriding list content to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup all)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup all to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup all to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup platform)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup platform to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup platform to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup system)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup system to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup system to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup to)} {
+?
+  candidate  candidate
+  custom     custom
+  startup    startup
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup to candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup to custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup to startup)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup urlOverridingList)} {
+?
+  to  Destination
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup urlOverridingList to)} {
+?
+  Name of a file to store configuration (any name different than startup-config.  Any string
+
+[D
+}
+####################################################################################################
+set {CLI(configure copy startup urlOverridingList to Name)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure export)} {
+?
+                <No config file to export>
+  provisioning  Copy provisioning templates to file
+
+[D
+}
+####################################################################################################
+set {CLI(configure export provisioning)} {
+?
+    <No provisioning file to export>
+
+[D
+}
+####################################################################################################
+set {CLI(configure import)} {
+?
+  protocol://user:password@host:port/path  Import from
+  provisioning                             Import provisioning configuration from remote host
+  restore                                  Restore factory configuration and load configuration file
+
+[D
+}
+####################################################################################################
+set {CLI(configure import provisioning)} {
+?
+  protocol://user:password@host:port/path  Import from
+
+[D
+}
+####################################################################################################
+set {CLI(configure import restore)} {
+?
+  protocol://user:password@host:port/path  Import from
+
+[D
+}
+####################################################################################################
+set {CLI(configure load)} {
+?
+                <No configuration file to load>
+  provisioning  Load provisioning configuration from file
+  restore       Restore factory configuration and load configuration from local file
+
+[D
+}
+####################################################################################################
+set {CLI(configure load provisioning)} {
+?
+    <No provisioning file to load>
+
+[D
+}
+####################################################################################################
+set {CLI(configure load restore)} {
+?
+    <No config file to load>
+
+[D
+}
+####################################################################################################
+set {CLI(configure terminal)} {
+?
+  candidate  Start a configuring session of the candidate configuration [default choice]
+  custom     Start a configuring session of the custom configuration
+  startup    Start a configuring session of the startup configuration
+  <cr>       
+
+[D
+}
+####################################################################################################
+set {CLI(configure terminal candidate)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure terminal custom)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(configure terminal startup)} {
+?
+  <cr>  
+
+[D
+}

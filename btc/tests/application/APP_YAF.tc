@@ -1,0 +1,180 @@
+#!/usr/bin/expect --
+
+proc APP_YAF {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Test YAF 0.8.1 opensource app to ensure proper basic usage.}
+set ${p}(Suite)		{application}
+set ${p}(Comments)	{}
+set ${p}(Author)	{wsultani}
+set ${p}(Required)	{dut pc0}
+set ${p}(Created)	{09-06-15}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    package require config
+
+    set dut_sid $::sid($::dut)
+    set pc0_sid $::sid($::pc0)
+
+    upvar pc lpc
+
+    set src_pc(obj) "$::pc0"
+    set src_pc(int) "$lpc(Interface)"
+    set src_pc(ip) "$lpc(InterfaceIP)"
+    set src_pc(sid) "$pc0_sid"
+    set src_pc(port) "17"
+    set src_pc(bcast) "10.10.1.255"
+    set src_pc(mask) "255.255.255.0"
+
+    set cfg yaf
+    set rpmlst "libairframe-0.7.2-1.ppc.rpm libfixbuf-0.7.3-1.ppc.rpm yaf-0.8.1-1.B7000.ppc.rpm yafctl"
+    set mbps 100
+    set pcap "Windows_NT_Attack_Data_Set.DARPA.pcap"
+    set pkt_count 950000
+    set pkt_count_delta 10000
+    set min_pkt_count [expr $pkt_count - $pkt_count_delta]
+    set max_pkt_count [expr $pkt_count + $pkt_count_delta]
+
+    set comp_delta 0
+    set comparr(CPU-1c0) 1
+    set comparr(CPU-1c1) 1
+    set comparr(CPU-2c0) 1
+    set comparr(CPU-2c1) 1
+    set comparr(CPU-3c0) 1
+    set comparr(CPU-3c1) 1
+    set comparr(CPU-4c0) 1
+    set comparr(CPU-4c1) 1
+    set comparr(CPU-5c0) 1
+    set comparr(CPU-5c1) 1
+    set comparr(CPU-6c0) 1
+    set comparr(CPU-6c1) 1
+    set comparr(Total) 12
+
+
+    set ret [$::dut bivio_nrsp_reset default all]
+    if { [problem_with $ret data] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Clearing the alert files on $::dut"
+    array set arr ""
+    set ret [$::dut bivio_alert_count clean $cfg arr]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Loading $cfg config"
+    set ret [${cfg}_config $rpmlst]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Performing show stats on dut"
+    set cmd "show_stats -c"
+    set exp "Total.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Starting tcpreplay on $src_pc(obj)\($src_pc(ip)\) from $src_pc(int) for $pcap"
+    set ret [$src_pc(obj) pc_tcpreplay_play $src_pc(int) $mbps $pcap]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Stopping $cfg"
+    set ret [$::dut bivio_nrsp_stop $cfg]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Performing show stats on dut"
+    set cmd "show_stats -c"
+    set exp "Total.*$::prompt($::dut)"
+
+    set ret [send_expect_pair $dut_sid $cmd $exp "$::prompt($::dut)" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    # get the total number of packets recieved
+    if { ![regexp {Total:\s+(\d+)} [data_from $ret] match total] } {
+        write_error "Could not get total packet count - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    # the counter on show stats should be between $min_pkt_count and $max_pkt_count.
+    if { $total < $min_pkt_count || $total > $max_pkt_count } {
+        write_warning "RX Packet count on $::dut is $total, expected between $min_pkt_count-$max_pkt_count."
+        return [list false [data_from $ret]]
+    }
+    write_info "RX Packet count on $::dut is $total, expected between $min_pkt_count-$max_pkt_count."
+
+    write_step "Collecting non-zero file counts on $::dut"
+    set ret [$::dut bivio_alert_count normal $cfg arr]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    foreach aname [lsort [array names arr]] {
+        set min_comp [expr $comparr($aname) - $comp_delta]
+        if { $min_comp < 0 } {
+            set min_comp 0
+        }
+
+        set max_comp [expr $comparr($aname) + $comp_delta]
+
+        # the total count of non-zero files should be greater then $min_comp.
+        if { $aname == "Total" } {
+            if { $arr($aname) < $min_comp } {
+                write_error "Non-zero file count for $aname is $arr($aname), expected greater then $min_comp."
+                return [list false [data_from $ret]]
+            }
+            write_info "Non-zero file count for $aname is $arr($aname), expected greater then $min_comp."
+            continue
+        }
+
+        # the non-zero file count for each cpu should be between $min_pkt_count and $max_pkt_count.
+        if { $arr($aname) < $min_comp || $arr($aname) > $max_comp } {
+            write_warning "Non-zero file count for $aname is $arr($aname), expected between $min_comp-$max_comp."
+        } else {
+            write_info "Non-zero file count for $aname is $arr($aname), expected between $min_comp-$max_comp."
+        }
+    }
+
+    write_step "Manually start $cfg on $::dut"
+    set cmd "bvcmd CPU-1c0 /etc/init.d/yafctl start"
+    set exp "yaf starting"
+    set ret [send_expect_pair $dut_sid $cmd $exp "" 2 5]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Manually stop $cfg on $::dut"
+    set cmd "\\\003"
+    set exp "yaf terminating"
+    set ret [send_expect_pair $dut_sid $cmd "$exp" $::prompt($::dut) 3 5 "" noresend]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+# this is required for auto loading
+package provide APP_YAF 1.0

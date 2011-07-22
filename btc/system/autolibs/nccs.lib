@@ -1,0 +1,1119 @@
+#!/usr/bin/expect --
+
+package require Itcl
+
+itcl::class nccs {
+
+    # set the global retry for this class
+    public variable gretry 3
+    array set ::sid ""
+    array set ::prompt ""
+    public variable enable_prompt {#}
+    public variable admin_prompt {>}
+    public variable rom_prompt {Command>}
+    public variable send_human {.1 .3 1 .05 2}
+
+    method nccs_connect { method nccs_ip user passwrd }
+    method nccs_general_expect { user passwrd }
+    method nccs_configure { mode cmd }
+    method nccs_change_user { user passwrd new_prompt }
+    method nccs_config_db { db }
+    method nccs_db_query { query }
+    method nccs_config_log { typelist state }
+    method nccs_config_url_filter { state }
+    method nccs_config_acl { aclnum aclaction aclproto }
+    method nccs_config_global_profile { service catlist respid }
+    method nccs_config_url_profile_tmpl { respid tmplid }
+    method nccs_factory_reset {}
+    method nccs_fetch_from_bvlog { log resarr field value }
+    method nccs_fetch_from_stclog { log resarr field value }
+    method nccs_generate_cli_data { cli file mode }
+
+    public variable ip_add ""
+    public variable user "admin"
+    public variable passwrd "admin"
+    public variable ctype "telnet"
+
+    constructor {ip_add user password ctype} {
+
+        # store the constructor args
+        eval configure -ip_add $ip_add -user $user -passwrd $passwrd \
+                       -ctype $ctype
+
+        # open connection to nccs object
+        set ret [nccs_connect $ctype $ip_add $user $password]
+        if { [problem_with $ret] } {
+            write_error [data_from $ret]
+            exit
+        }
+        return [list true $this]
+    }
+
+    destructor {
+	if [info exist ::sid($this)] {
+	    #close $::sid($this)
+            exp_close -i $::sid($this)
+            exp_wait -i $::sid($this)
+	    write_info "$::sid($this) is closed"
+	}
+    }
+}
+
+itcl::body nccs::nccs_connect { method nccs_ip user passwrd} {
+
+    # set the local retry for this method
+    set lretry $gretry
+
+    switch $method {
+	"ssh" {
+	    set cmd "$user@$nccs_ip"
+	}
+	"telnet" {
+	    set cmd "$nccs_ip"
+	}
+	"console" {
+	    set method "telnet"
+	    set cmd "$console $port"
+	}
+	default {
+	    set method "telnet"
+	    set cmd "$nccs_ip"
+	}
+    }
+
+    switch $user {
+        enable {
+	    set ::prompt($this) $enable_prompt
+        }
+        admin {
+	    set ::prompt($this) $admin_prompt
+        }
+	default {
+	    set ::prompt($this) $enable_prompt
+        }
+    }
+       
+    write_step "Connecting to $this \($method $cmd\)"
+    if { [catch "spawn $method $cmd" reason] } {
+	write_error "Failed to spawn $method $cmd : $reason"
+	exit
+    }
+
+    set ::sid($this) $spawn_id
+
+    # This is needed if mode is ssh and you are asked if you
+    # would like to set up the key and continue.
+    if { $method == "ssh" } {
+        sleep 2
+        exp_send -h "yes\r"
+    }
+
+    set ret [nccs_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+	return [list false [data_from $ret]]
+    }
+
+    write_step "turning more pagging off"
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "tools more 0"
+    set exp "$::prompt($this)"
+    set ret [send_expect_pair $spawn_id $cmd $exp $::prompt($this) 3 2]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true $spawn_id]
+}
+
+itcl::body nccs::nccs_general_expect { user passwrd } {
+    # set the local retry for this method
+    set lretry $gretry
+    set attempt 1
+
+    set spawn_id $::sid($this)
+    while {$lretry > 0} {
+        expect {
+            -re "(.*)Escape character is(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                exp_send -h "\r"
+	        exp_continue
+            }
+
+            -nocase "(.*)connection refused(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection refused"
+                flush_exp_buffer $spawn_id
+                return [list "false" "$msg"]
+            }
+
+            "(.*)you want to continue connecting(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent {yes}
+                exp_send -h "yes\r"
+	        exp_continue
+            }
+
+            -re "Last(.*)ogin:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                sleep 2
+                exp_send -h "\r"
+                exp_continue
+            }
+
+            -re "(.*)Username:(.*)" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+                exp_continue
+            }
+
+            -re "(.*)ogin:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$user"
+                exp_send -h "$user\r"
+	        exp_continue
+            }
+
+            -re "(.*)assword:(.*)" {
+		set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "$passwrd"
+                exp_send -h "$passwrd\r"
+	        exp_continue
+            }
+
+            -re \(.*\)# {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)]] end]
+                set full_prompt [regsub -all {\(|\)} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)$enable_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)]] end]
+                set full_prompt [regsub -all {\(|\)} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                configure -enable_prompt $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)$admin_prompt {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                exp_send -h "\r"
+                set full_prompt [lindex [split [string trim $expect_out(buffer)]] end]
+                set full_prompt [regsub -all {\(|\)} $full_prompt {\\&}]
+                set ::prompt($this) $full_prompt
+                configure -admin_prompt $full_prompt
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re {(.*)]\$} {
+                set ::prompt($this) $expect_out(buffer)
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re {(.*)\#\?} {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (#?)"
+	        exp_send -i $spawn_id \003
+                flush_exp_buffer $spawn_id
+	        exp_continue
+            }
+
+            -re (.*)$::prompt($this) {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched ($::prompt($this))"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re (.*)Command> {
+		set ::prompt($this) $rom_prompt
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_info "Matched (Command>)"
+                flush_exp_buffer $spawn_id
+                return [list "true" "$msg"]
+            }
+
+            -re "ftp>" {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                flush_exp_buffer $spawn_id
+                write_sent "exit"
+                exp_send -h "exit\r"
+                exp_continue
+            }
+
+            -timeout 5 timeout {
+                write_warning "Timedout waiting for responce - ($attempt/$gretry)"
+                flush_exp_buffer $spawn_id
+	        exp_send -h "\r"
+	        incr attempt
+	        incr lretry -1
+            }
+
+            eof {
+                set msg $expect_out(buffer)
+                write_received "$msg"
+                write_error "Connection to $this failed"
+                return [list "false" "$msg"]
+            }
+        }
+    }
+    flush_exp_buffer $spawn_id
+    return [list "false" ""]
+}
+
+itcl::body nccs::nccs_change_user { nuser npasswrd new_prompt } {
+
+    set spawn_id $::sid($this)
+
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this nccs_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # if already in right user mode then return true.
+    if { $::prompt($this) == [set ${nuser}_prompt] } {
+        return [list true $new_prompt]
+    }
+
+    # set the global prompt to the new prompt
+    set temp_prompt $new_prompt
+
+    switch $nuser {
+        admin {
+            set bv_cmd "exit"
+        }
+        enable {
+            set bv_cmd "enable"
+        }
+    }
+
+    set ret [send_expect_pair $spawn_id $bv_cmd $new_prompt $new_prompt 5 3]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # set the correct prompt
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this nccs_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true [data_from $ret]]
+}
+
+itcl::body nccs::nccs_configure { mode cmd } {
+
+    set spawn_id $::sid($this)
+
+    # configure will change the prompt to (mode)#
+    set cfg_prompt "(.*)#"
+
+    # change to configure mode
+    set bv_cmd "$mode"
+    set ret [send_expect_pair $spawn_id $bv_cmd $cfg_prompt $cfg_prompt 3 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # set the correct prompt
+    flush_exp_buffer $spawn_id
+    exp_send -h "\r"
+    set ret [$this nccs_general_expect $user $passwrd]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    # check the prompt to see if in the right mode
+    if { ![regexp {\((.*)\)} $::prompt($this) match pmode] } {
+        write_error "prompt mode not deteced - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    set pmode [lindex [split $pmode "-"] end]
+
+    if { ![regexp ".*$pmode.*" [regsub -- "-" $mode ""] match] } {
+        write_error "Not in correct mode - expected $mode, got $pmode"
+        return [list false [data_from $ret]]
+    }
+
+    if { $cmd != "" } {
+        # execute the configure command
+        flush_exp_buffer $spawn_id
+        set bv_cmd "$cmd"
+        set exp "$cmd.*$::prompt($this)"
+        set ret [send_expect_pair $spawn_id $bv_cmd $exp "" 3 5]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+
+        # exit out of configure mode
+        flush_exp_buffer $spawn_id
+        set bv_cmd "exit"
+        set dret [send_expect_pair $spawn_id $bv_cmd $enable_prompt "" 3 5]
+        if { [problem_with $dret] } {
+            return [list false [data_from $dret]]
+        }
+
+        # set the correct prompt
+        flush_exp_buffer $spawn_id
+        exp_send -h "\r"
+        set dret [$this nccs_general_expect $user $passwrd]
+        if { [problem_with $dret] } {
+            return [list false [data_from $dret]]
+        }
+    }
+    return [list true "[data_from $ret]"]
+}
+
+itcl::body nccs::nccs_config_db { db } {
+
+    set spawn_id $::sid($this)
+
+    # set the local retry for this method
+    set lretry $gretry
+
+    switch $db {
+        "esoft" {
+            set cmd {
+                configure terminal
+                urlEngine
+                urlDB
+                categorizationDBServer
+                catDbType Esoft
+                end
+                dbCatEntry Esoft 
+                  dbMulticategoryOp yes
+                  dbPriority 2
+                  dbDescription "Esoft Url Database"
+                  dbUpdateUrl http://192.168.110.236/ESOFT/v3
+                  dbUpdateUser ""
+                  dbUpdatePassword ""
+                  dbDailyUpdate 1
+                  dbUpdateLicense ""
+                end
+                exit
+                configure commit
+            }
+        }
+
+        "netstar" {
+            set cmd {
+                configure terminal
+                urlEngine
+                urlDB
+                      categorizationDBServer
+                            catDbType Netstar
+                      end
+
+                      dbCatEntry Netstar
+                            dbMulticategoryOp yes
+                            dbPriority 4
+                            dbDescription "Netstar Url Database"
+                            dbUpdateUrl nsv10.netstar-inc.com/gcfbp/get.cgi
+                            dbUpdateUser ""
+                            dbUpdatePassword ""
+                            dbDailyUpdate 1
+                            dbUpdateLicense GS7G9WWG5A
+                      end
+                exit
+                configure commit
+            }
+        }
+
+        default {
+            write_error "No Database identified"
+            return [list false $db]
+        }
+    }
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    write_step "Updating local database $db"
+
+    ######################################################################
+    # nccs bug - where you have to run the dbupdate twise for it to responde.
+    for {set x 1} {$x <= 5} {incr x} {
+        set bv_cmd "tools dbupdate"
+        set ret [send_expect_pair $spawn_id $bv_cmd $::prompt($this) "" 2 5 "" noresend]
+        if { [problem_with $ret] } {
+            return [list false [data_from $ret]]
+        }
+        sleep 5
+    }
+    ######################################################################
+
+    write_step "Checking database update status"
+    set bv_cmd "show dbupdate"
+    set exp "Update complete.*DB version number:"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 30 10]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_db_query { query } {
+    
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "fetching query $query"
+    set bv_cmd "tools dbquery $query"
+    set exp "$bv_cmd.*$::prompt($this)"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    if { ![regexp {Database:\s+(\S+)\s+Matched URL:\s+(\S+)\s+Categories:\s+-\s+(\S+)} [data_from $ret] match db url cat] } {
+        write_error "No data fetched for query $query - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    return [list true "$db $url $cat"]
+}
+
+itcl::body nccs::nccs_config_log { typelist state} {
+
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set allowed {Forward Redirect Drop Reject}
+    set bad ""
+
+    foreach type $typelist {
+        if { [lsearch -nocase $allowed $type] < 0 } {
+            lappend bad "$type"
+        } else {
+            append sub "url$type $state\n"
+        }
+    }
+
+    if { $bad != "" } {
+        write_error "Flow types \"$bad\" not supported"
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "
+        configure terminal
+        loggerengine
+            logtype
+                urlfilterlogstruct
+                $sub
+            end
+        end
+        loggerPlugins
+            outputPlugin
+                filesystemOPEntry urlfilterFile
+                    printHeaderFS 25
+                    end
+                end
+            end
+        end
+        exit
+        configure commit
+    "
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_config_url_filter { state } {
+
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "
+        configure terminal
+        systemmodules
+            urlFilterModule $state
+            subscriberAwareness $state
+        end
+        exit
+        configure commit
+    "
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_config_acl { aclnum aclaction aclproto } {
+
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "
+        configure terminal
+        platformConfiguration
+            acl
+                aclEntry $aclnum aclAction $aclaction
+                    aclDpiProto $aclproto
+                    srcNetLen 0
+                    dstNetLen 0
+                end
+            end
+        end
+        exit
+        configure commit
+    "
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_config_global_profile { service catlist respid } {
+
+    set spawn_id $::sid($this)
+
+    set sub ""
+    if { [llength $catlist] > 0 } {
+
+        foreach cat $catlist {
+
+            if { [regexp -- {-|:} $cat match] } {
+                set min [lindex [split $cat "-|:"] 0]
+                set max [lindex [split $cat "-|:"] 1]
+    
+                for {set x $min} {$x <= $max} {incr x} {
+                    append sub "category $x\n"
+                }
+                continue
+            }
+            append sub "category $cat\n"
+        }
+    }
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "
+        configure terminal
+        templates
+            profileServices $service
+                urlfilter yes
+                    $sub
+                    responseId $respid
+                    nct no
+                    dns no
+                    dnsService off
+                end
+            end
+        end
+        exit
+        configure commit
+    "
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_config_url_profile_tmpl { respid tmplid } {
+
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set cmd "
+        configure terminal
+        urlEngine
+            urlProfileTemplate
+                respIDcatEntry $respid respProfTmpltId $tmplid
+            end
+        end
+        exit
+        configure commit
+    "
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set exp "#"
+
+    foreach scmd [split $cmd "\n"] {
+        set ret [send_expect_pair $spawn_id $scmd $exp $::prompt($this) 3 5]
+        if { [problem_with $ret data] } {
+            return [list false [data_from $ret]]
+        }
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_factory_reset {} {
+
+    set spawn_id $::sid($this)
+
+    set ret [nccs_change_user enable "" $enable_prompt]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Reseting to factory config"
+    set bv_cmd "configure copy factory to startup"
+    set exp "Are you sure you want to save"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "y"
+    set exp "All OK"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($this) 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    return [list true ""]
+}
+
+itcl::body nccs::nccs_fetch_from_bvlog { log resarr field value } {
+
+    set spawn_id $::sid($this)
+
+    upvar $resarr lresarr
+    set modata ""
+
+    set fd [open $log r]
+    set logdata [read $fd]
+    close $fd 
+
+    set delimeter "|"
+    set headertag {timestamp.*}
+    set modata [split $logdata "\n"] 
+
+    set out ""
+    set count 0
+
+    if { ![regexp -line $headertag $logdata match] } {
+        write_error "Could not find header row in logfile - check $log"
+        return [list false ""]
+    }
+
+    set header [split $match $delimeter]
+
+    foreach line $modata {
+
+        set logentry [split $line $delimeter]
+
+        if { [lindex $logentry [lsearch $header $field]] == "$value" } {
+            write_info "Found Match for \"$field\" as \"$value\""
+
+            foreach key "[string trim $header]" val "[string trim $logentry]" {
+                if { $key == "" } {
+                    continue
+                }
+                array set lresarr [list "$key" "$val"]
+            }
+
+            lappend out $line
+        }
+        incr count
+    }
+
+    write_info "Found total of $count enteries in $log"
+
+    if { [array size lresarr] <= 0 } {
+        write_error "No entry found for $field as $value - check $log"
+        return [list false ""]
+    }
+
+    return [list true "$out"]
+}
+
+itcl::body nccs::nccs_fetch_from_stclog { log resarr field value } {
+
+    set spawn_id $::sid($this)
+
+    upvar $resarr lresarr
+    set modata ""
+
+    set fd [open $log r]
+    set logdata [read $fd]
+    close $fd
+
+    set delimeter ","
+    set headertag {.*Entire Page.*}
+    foreach al [split $logdata "\n"] {
+        if { [regexp "http:" $al match] } {
+            lappend modata "$al"
+        }
+    }
+
+    set out ""
+    set count 0
+
+    if { ![regexp -line $headertag $logdata match] } {
+        write_error "Could not find header row in logfile - check $log"
+        return [list false ""]
+    }
+
+    set header [split $match $delimeter]
+
+    foreach line $modata {
+
+        set logentry [split $line $delimeter]
+
+        # strip all special char before compare
+        set cval [regsub -all {[?*$&\{\[\]\}%^+]} $value ""]
+        set fval [regsub -all {[?*$&\{\[\]\}%^+]} [lindex $logentry [lsearch $header $field]] ""]
+
+        if { [regexp -nocase "$cval" "$fval" match] } { 
+            write_info "Found Match for \"$field\" as \"$value\""
+
+            foreach key "[string trim $header]" val "[string trim $logentry]" {
+                if { $key == "" } {
+                    continue
+                }
+                array set lresarr [list "$key" "$val"]
+            }
+
+            lappend out $line
+        }
+        incr count
+    }
+
+    write_info "Found total of $count enteries in $log"
+
+    if { [array size lresarr] <= 0 } {
+        write_error "No entry found for $field as $value - check $log"
+        return [list false ""]
+    }
+
+    return [list true "$out"]
+}
+
+itcl::body nccs::nccs_generate_cli_data { cli file mode} {
+
+    set spawn_id $::sid($this)
+
+    write_info "Generating CLI data for \"$cli\""
+
+    exp_send -h "\003"
+    flush_exp_buffer $spawn_id
+
+    match_max 1000000
+
+    exp_send -h "$cli ?"
+
+    expect {
+
+        -re "Unrecognized token" {
+            set gout "$expect_out(buffer)"
+            exp_send -h "\r"
+            flush_exp_buffer $spawn_id
+        }
+
+        -re "$cli\\s+\?(.*)$::prompt($this)" {
+            write_info "cli output - $expect_out(1,string)"
+            set gout "$expect_out(1,string)"
+            foreach line [split $expect_out(1,string) \n] {
+                if { [regexp {(\S+)\s+\S+} $line match cmd] } {
+                    if { [regexp {[<>!@#$%&*/]} $cmd match] } {
+                        continue
+                    }
+                    write_info "sub-category - $cmd"
+                    lappend cmdlst $cmd
+                }
+            }
+            flush_exp_buffer $spawn_id
+        }
+
+        -timeout 5 timeout {
+            set msg "Timedout waiting for responce from \"$cli\""
+            write_error "$msg"
+            exp_send -h "\003"
+            flush_exp_buffer $spawn_id
+            return [list "false" "$msg"]
+        }
+
+        eof {
+            set msg $expect_out(buffer)
+            write_received "$msg"
+            write_error "Connection to $this failed"
+            return [list "false" "$msg"]
+        }
+    }
+
+    match_max -d
+
+    # Create the code file by writing the cmd and output to file.
+    set fd [open "$file" a+]
+    puts $fd [string repeat "#" 100]
+
+    # replace all numeric values with wildcard
+    set gout [regsub -all {\d+} $gout "*"]
+    puts $fd "set \{CLI\([string trim $cli]\)\} \{\n[string trim $gout]\n\}"
+    close $fd
+
+    # Source the ignore list, which contains the list of cmds to ignore.
+    set ifile "[file join [file dirname $file] "ignore.data"]"
+    source "$ifile"
+
+    if { [info exists cmdlst] && [llength $cmdlst] != "0" && $mode == "full"} {
+        foreach cmd $cmdlst {
+            if { [lsearch $ignore "$cli $cmd"] >= 0 } {
+                write_info "Ignoring command: $cli $cmd"
+                continue
+            }
+            nccs_generate_cli_data "$cli $cmd" $file full
+        }
+    }
+
+    exp_send -h "\003"
+    flush_exp_buffer $spawn_id
+
+    return [list true ""]
+}
+
+##########################################################################################
+##                                                                                      ##
+##                              End of NCCS object                                      ##
+##                                                                                      ##
+##########################################################################################
+
+proc nccs_factory_reset { nccs } {
+
+    set spawn_id $::sid($nccs)
+
+    set ret [$nccs nccs_change_user enable "" "#"]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Reseting to factory config"
+    set bv_cmd "configure copy factory to startup"
+    set exp "Are you sure you want to save"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($nccs) 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    set bv_cmd "y"
+    set exp "All OK"
+    set ret [send_expect_pair $spawn_id $bv_cmd $exp $::prompt($nccs) 2 5]
+    if { [problem_with $ret] } {
+        return [list false [data_from $ret]]
+    }
+
+    write_step "Rebooting bivio $::dut"
+    set ret [$::dut bivio_reboot full]
+    if { [problem_with $ret] } {
+        write_error "Failed to Reboot bivio $::dut - [data_from $ret]"
+        return [list false [data_from $ret]]
+    }
+
+    # wait a while for nccs to converge.
+    sleep 30
+
+    set cmd "/etc/init.d/sshd start"
+    set exp {Starting sshd:.*OK}
+
+    set ret [send_expect_pair $::sid($::dut) $cmd $exp "$::prompt($::dut)" 2 3]
+    if { [problem_with $ret] } {
+        write_error [data_from $ret]
+        return [list false [data_from $ret]]
+    }
+
+    itcl::delete object $nccs
+    unset nccs
+
+    write_step "Recreate nccs object"
+
+    set nccs(Class) nccs
+    set nccs(Name) "nccsdut"
+    set nccs(IPAddress) [$::dut cget -ip_add]
+    set nccs(Login) admin
+    set nccs(Password) admin
+    set nccs(Connection) telnet
+
+    # create the nccs object
+    set ret [eval $nccs(Class) $nccs(Name) $nccs(IPAddress) $nccs(Login) $nccs(Password) $nccs(Connection)]
+    set ::nccs "::$ret"
+
+    return [list true ""]
+    
+}
+
+proc get_cats_from_config { cfgfile rtarr } {
+
+    upvar $rtarr ltarr
+
+    set catidlist ""
+
+    if { [info exists ltarr(value)] && $ltarr(value) != "" } {
+        foreach cat $ltarr(value) {
+
+            if { [regexp -- {-|:} $cat match] } {
+                set min [lindex [split $cat "-|:"] 0]
+                set max [lindex [split $cat "-|:"] 1]
+
+                for {set x $min} {$x <= $max} {incr x} {
+                    lappend catidlist $x
+                }
+            } else {
+                lappend catidlist $cat
+            }
+        }
+    } else {
+
+        set fd [open $cfgfile r]
+        set logdata [read $fd]
+        close $fd
+
+        set catlist [regexp -all -inline {Categories: - \d+} $logdata]
+        if {[llength $catlist] > 0} {
+            foreach str $catlist {
+                if { [regexp {Categories: - (\d+)} $str match catid] } {
+                    lappend catidlist $catid
+                }
+            }
+        }
+    }
+
+    set ltarr(value) $catidlist
+
+    if {[llength $catidlist] <= 0} {
+        return [list false $catidlist]
+    } else {
+        return [list true $catidlist]
+    }
+}
+
+# the following line must be left at the bottom of the script.
+package provide nccs 1.0

@@ -1,0 +1,68 @@
+####################################################################################################
+set {CLI(Header)} {
+APC0Serial      : 7APC-000229         
+APC1            : 13                  
+APC1ROM         : 2.45s               
+APCCount        : 1                   
+BackPlane0      : 11                  
+Build           : 5.0.7-3 NCCS 1.3.2-0.201102281621 FC5 ZCP System
+CPU             : 14                  
+CPUNet          : 12                  
+FPGA            : 11/13/13            
+NPC0            : 13                  
+NPC0ROM         : 2.45s               
+NPC0Serial      : 7NPC-000568         
+NPCCount        : 1                   
+Os              : BiviOS              
+Product         : Bivio 7500          
+ROM             : 2.45s/2.45s         
+Shell           : Bivio CLI           
+Slot0           : 12-port Harrier 10/100/1000 Card
+Slot1           : empty               
+Vendor          : Bivio Networks, Inc.
+system          : Regular
+}
+####################################################################################################
+set {CLI(debug)} {
+?
+  collect  Collect debug info
+  export   Export system debug info
+
+[D
+}
+####################################################################################################
+set {CLI(debug collect)} {
+?
+  info  Debug logs info
+
+[D
+}
+####################################################################################################
+set {CLI(debug collect info)} {
+?
+  <cr>  
+
+[D
+}
+####################################################################################################
+set {CLI(debug export)} {
+?
+  core  Core dump files
+  info  Debug logs info
+
+[D
+}
+####################################################################################################
+set {CLI(debug export core)} {
+?
+    <No core files to export>
+
+[D
+}
+####################################################################################################
+set {CLI(debug export info)} {
+?
+    <No debug file to export>
+
+[D
+}

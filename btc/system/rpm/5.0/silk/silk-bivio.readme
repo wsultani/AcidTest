@@ -1,0 +1,70 @@
+=========================================
+SiLK For The Bivio 7000 Series
+=========================================
+
+
+-----------------------------------------
+Introduction
+-----------------------------------------
+
+SiLK, the System for Internet-Level Knowledge, is a collection of traffic analysis tools developed
+by the CERT Network Situational Awareness Team (CERT NetSA) to facilitate security analysis of large
+networks. The SiLK tool suite supports the efficient collection, storage and analysis of network flow
+Adata, enabling network security analysts to rapidly query large historical traffic data sets. SiLK is
+ideally suited for analyzing traffic on the backbone or border of a large, distributed enterprise or
+mid-sized ISP. 
+
+SiLK consists of two sets of tools: a packing system and analysis suite. The packing system receives i
+Netflow V5 PDU's and converts them into a more space efficient format, recording the packed records into service-specific binary flat files. The analysis suite consists of tools which can read these flat files and then perform various query operations, ranging from per-record filtering to statistical analysis of groups of records. The analysis tools interoperate using pipes, allowing a user to develop a relatively sophisticated query from a simple beginning. 
+
+-----------------------------------------
+Notes
+-----------------------------------------
+
+
+-----------------------------------------
+Prerequisite
+-----------------------------------------
+
+
+-----------------------------------------
+Installation
+-----------------------------------------
+
+1. Install the SiLK RPM
+
+    rpm -Uvh silk-1.0.1-1.B7000.ppc.rpm
+
+2. (optional)Install the application to start at boot
+
+    appinst -i silk
+
+
+-----------------------------------------
+Configuration
+-----------------------------------------
+
+All configuration takes place in the file /etc/init.d/silkctl.
+
+By default flowcap is set to run on the standard port. By editing the options
+or application you can run SiLK with any desired runtime behavior.
+
+
+
+-----------------------------------------
+Starting
+-----------------------------------------
+
+1. Start SiLK running on CPU-X 
+
+        nrsp start silk
+
+
+-----------------------------------------
+Stopping
+-----------------------------------------
+
+1. Stop YAF running on the application CPU's
+
+        nrsp stop silk 
+

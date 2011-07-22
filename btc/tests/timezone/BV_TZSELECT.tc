@@ -1,0 +1,146 @@
+#!/usr/bin/expect --
+
+proc BV_TZSELECT {} {
+#--------------------------------------------------------------------------------------------#
+variable p [namespace tail [lindex [info level 0] 0]]
+set ${p}(Name)		$p
+set ${p}(type)		{testcase}
+set ${p}(Description)	{Set and check various timezones using /usr/bin/tzselect.}
+set ${p}(Suite)		{timezone}
+set ${p}(Comments)	{Timezone script was originally written in July 2006 by jenriq. The same script was adapted to use BTC harness in Apr 2008 by jenriq, wsultani.}
+set ${p}(Author)	{jenriq}
+set ${p}(Required)	{::dut}
+set ${p}(Created)	{2006-07-11}
+set ${p}(EOL)		{}
+update_mysql_db ${p}
+#--------------------------------------------------------------------------------------------#
+
+    ############################################################################
+    # source other procs needed by this script
+    ############################################################################
+    set LEGACYHOME "./system/legacylibs"
+    source "$LEGACYHOME/shared_scripts.exp"
+    source "$LEGACYHOME/globals.exp"
+    source "$LEGACYHOME/log_procs.exp" ;# need until dbug proc calls are purged
+    source "$LEGACYHOME/timezones.exp"
+    
+    ############################################################################
+    # Main
+    ############################################################################
+   
+    set spawn_id $::sid($::dut)
+    #set testresult $ABORT ;# initialize test result
+
+    write_debug "Make sure we are in CLI."
+    set ret [$::dut bivio_change_user admin admin {(.*)(admin:)(.*)>}]
+    if { [problem_with $ret] } {
+       write_error "Can not get to CLI. Aborting all tests."
+       return [list false [data_from $ret]]
+    }
+ 
+    write_debug "About to start with the main test."
+    foreach region $regionl {
+       foreach country [set $region] {
+          foreach city [set $country] { 
+             set cityName     [lindex $city 0]
+             set TZ           [lindex $city 1]
+             set offset       [lindex $city 2]
+ 
+             set name [regsub -all {[/|" "]} "$TZ" "-"]
+             start_subtest "$name"
+ 
+             set fmt {%-20s : %-20s : %-20s : %-20s}
+             write_step "\n[format $fmt Region Country Timezone Offset]\n[format $fmt "$region" "$country" "$TZ" "$offset"]"
+ 
+             write_debug "Accessing the timezone menu thru CLI."
+             set retlist [send_expect_pair $spawn_id "set timezone" \
+              "Your selection" "" 1 3]
+             if { [problem_with $retlist] } {
+                set msg "Unable to access timezone menu."
+                write_error "$msg"
+                return [end_subtest false exit]
+             }
+             write_debug "Timezone menu was seen."            
+    
+             write_debug "Accessing tzselect from the timezone menu."
+             set retlist [send_expect_pair $spawn_id "M" {\#\?} "" 1 3]
+             if { [problem_with $retlist] } {
+                set msg "Unable to access tzselect."
+                write_error "$msg"
+                return [end_subtest false exit]
+             }
+ 
+             set ::prompt($::dut) {\#\?}
+             write_debug "Now in tzselect menu."
+    
+             write_debug "Choose the region from list $region"  
+             set my_choice [get_num_index [data_from $retlist] $region]
+ 
+             set retlist [send_expect_pair $spawn_id $my_choice $::prompt($::dut) "" 1 3]
+             if { [problem_with $retlist] } {
+                set msg "Unable to choose region."
+                write_error "$msg"
+                return [end_subtest false exit]
+             }
+ 
+             write_debug "Choose the country from list: ([data_from $retlist])"
+             set my_choice [get_num_index [data_from $retlist] $country]
+ 
+             set retlist [send_expect_pair $spawn_id $my_choice $::prompt($::dut) "" 1 3]
+             if { [problem_with $retlist] } {
+                set msg "Unable to choose country."
+                write_error "$msg"
+                return [end_subtest false exit]
+             }
+    
+             write_debug "Check if more than one TZ exist for current country."
+             if {[llength $cityName] >= 1} {
+                write_debug "Multiple TZ exist for $country. Choose location $cityName."
+                set my_choice [get_num_index [data_from $retlist] $cityName]
+                set retlist [send_expect_pair $spawn_id $my_choice $::prompt($::dut) "" 1 3]
+                if { [problem_with $retlist] } {
+                   set msg "Unable to choose city."
+                   write_error "$msg"
+                   return [end_subtest false exit]
+                }
+             } ;# if
+             
+             write_debug "Attempt: set timezone to '$TZ'."
+             set retlist [send_expect_pair $spawn_id "1" "TZ=\'$TZ\'; export TZ" "" 1 3]
+             if { [problem_with $retlist] } {
+                write_error "Did not see that timezone was set to '$TZ'"
+                end_subtest false
+                continue
+             } ;# if
+             write_debug "Done: Timezone is set to '$TZ'."
+    
+             write_debug "Attempt: check if current timezone is indeed '$TZ'."
+             set retlist [send_expect_pair $spawn_id "show timezone"\
+              					"Current timezone is: \/$TZ" "" 1 3]
+             if { [problem_with $retlist] } {
+                write_error "Current timezone do not match what was set!"
+                end_subtest false
+                continue
+             } ;# if
+ 
+             write_debug "Done: current timezone '$TZ' matches what was set."
+ 
+             end_subtest [list true ""]
+ 
+          } ;# foreach city 
+       } ;# foreach country
+    } ;# foreach region
+ 
+    write_debug "Syn the global prompt."
+    exp_send "\r"
+    set ret [$::dut bivio_general_expect admin admin]
+    if { [problem_with $ret] } {
+       return [list false [data_from $ret]]
+    }
+    
+    return [analyze_subtest]
+   
+} ;# proc
+
+# this is required for auto loading
+package provide BV_TZSELECT 1.0
