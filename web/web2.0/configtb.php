@@ -30,9 +30,25 @@
         $out .= "<input type=hidden name=\"" . $key . "\" value=\"" . $val ."\"></input>\n";
       }
 
-      echo "<tr><td><input type=checkbox name=\"$class$num" . "name\" value=$row[$get]>";
+      $b = "$class$num" . "name";
+      if ($_POST[$b] == $row[$get]) {
+        $cb = "checked";
+      } else {
+        $cb = "";
+      }
+
+      echo "<tr><td><input type=checkbox name=\"$class$num" . "name\" value=$row[$get] $cb>";
       echo "<a href=\"javascript:showhide('$class$num');\">$row[$get]</a></td>\n";
-      echo "<td>Dev# <input type=text name=\"$class$num" . "num\" value=$num size=1></input></tr>\n";
+      //echo "<td>Dev# <input type=text name=\"$class$num" . "num\" value=$num size=1></input></tr>\n";
+      echo "<input type=hidden name=\"$class$num" . "num\" value=$num></input>\n";
+
+      if ($_POST[DUT] == $row[$get]) {
+        $rb = "checked";
+      } else {
+        $rb = "";
+      }
+
+      echo "<td><b>Set as DUT</b><input type=radio name=\"DUT\" value=$row[$get] $rb></input><td></tr>\n";
 
       echo "<tr><td colspan=5>\n";
       echo "<form action=\"" . $_SERVER['REQUEST_URI'] . "&show=editdevice\" method=\"post\">\n";
@@ -70,6 +86,12 @@
     }
   }
 
+  if ($_POST['Testbed'] != "" && !isset($_POST[DUT])) {
+    $stat = fail;
+    $msg = $msg . "DUT - cannot be empty.<br>";
+    $empty ++;
+  }
+
   if ( $empty == "0" && $_POST['Testbed'] != "" ) {
     foreach ($dev_array as $key => $value) {
       if (ereg ("(([a-zA-z]+)[0-9]+)name", $key, $match)) {
@@ -77,14 +99,19 @@
           $num = $_POST[$num];
           $name = $value;
           $class = $match[2];
+          if ($_POST[DUT] == $name) {
+            $dut = 1;
+          } else {
+            $dut = 0;
+          }
       } else {
           continue;
       }
 
       $table="btc_testbeds";
-      $arr1 = array('Testbed', 'DevName', 'DevClass', 'DevNum');
+      $arr1 = array('Testbed', 'DevName', 'DevClass', 'DevNum', 'DUT');
       $keys = join(", ",($arr1));
-      $arr2 = array($_POST[Testbed], $name, $class, $num);
+      $arr2 = array($_POST[Testbed], $name, $class, $num, $dut);
       $vals = join("\", \"",($arr2));
 
       $query = "REPLACE INTO $table ($keys) VALUES (\"$vals\")";
@@ -145,7 +172,7 @@
     <tr><td>
     <table border=0 cellpadding=0 cellspacing=0 valign=top width=100%>
     <tr>
-    <td><b>Testbed Name</b></td><td><input name=Testbed width=100 /><font size=0.6em /> Required</td>
+    <td><b>Testbed Name</b></td><td><input name=Testbed value="<? echo $_POST[Testbed]; ?>" width=100 /><font size=0.6em /> Required</td>
     <td width=33% align=center><input type="submit" value="Create Testbed" /></td>
     <td width=33% align=center><b><? echo '<a href="'.$_SERVER['REQUEST_URI'].'">Reset</a>'; ?></b></td>
     </tr>

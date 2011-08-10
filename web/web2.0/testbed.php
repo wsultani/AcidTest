@@ -9,10 +9,23 @@
     $query="SELECT * FROM $tbl WHERE $where =\"$match\"";
     $result=mysql_query($query) or die(mysql_error());
 
+    $query="SELECT DevName FROM btc_testbeds WHERE Testbed =\"$match\" AND DUT = \"1\"";
+    $result2=mysql_query($query) or die(mysql_error());
+    $row2 = mysql_fetch_array($result2,MYSQL_ASSOC);
+
     $num=0;
 
     // Print out result
     while($row = mysql_fetch_array($result,MYSQL_ASSOC)){
+
+      if ($row2[DevName] == $row[$get]) {
+        $dut = "DUT";
+        $style = "style='text-align:center; border:red thin solid; color:red'";
+      } else {
+        $dut = "";
+        $style = "";
+      }
+
       $out = "";
       while (list ($key, $val) = each($row)) {
         // Do not show the following fields
@@ -24,7 +37,8 @@
       }
 
       echo "<tr><td width=70%>$row[$get]</td>\n";
-      echo "<td width=30%>Dev# $num </td></tr>\n";
+      echo "<td " . $style . " width=30%><b>" . $dut . "</b></td></tr>\n";
+      //echo "<td " . $style . " width=30%>Dev# $num </td></tr>\n";
 
       echo "<tr><td colspan=5>\n";
       echo "<form action=\"" . $_SERVER['REQUEST_URI'] . "&show=editdevice\" method=\"post\">\n";
