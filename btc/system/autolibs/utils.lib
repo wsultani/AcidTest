@@ -1891,4 +1891,19 @@ update_mysql_db ${p}
     return [list true ""]
 }
 
+proc clean_exit {} {
+
+    upvar #0 argarray mlarr
+
+    set lockfile "/tmp/$mlarr(-testbed).lock"
+    if { [file exists $lockfile] } {
+        if { [catch {file delete -force "$lockfile"} ret] } {
+            write_error "unable to delete lock file - $ret"
+        }
+    }
+
+    # exit the whole program
+    exit 
+}
+
 package provide btc_utils 1.0
