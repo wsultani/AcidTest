@@ -94,6 +94,16 @@ foreach job $ret {
     }
 
     puts "check testbed $scheduler(Testbed) availability"
+    if { [file exists "/tmp/$scheduler(Testbed).lock"] } {
+        set sql_cmd "UPDATE $mysql_table SET Status = \"In Use\" WHERE Job = \"$scheduler(Job)\""
+        set ret [::mysql::exec $mysql "$sql_cmd"]
+        puts "Testbed $scheduler(Testbed) is busy"
+        continue
+    }
+
+    # Do not check for testbed availablity.
+    if (0) {
+    puts "check testbed $scheduler(Testbed) availability"
     set fields {Platform Class Name IPAddress Login Password Console Connection Port RemotePower}
 
     if { [regexp -- {-cfgfile\s+(\S+)\s+} $scheduler(Script) match cfgfile] } {
@@ -150,6 +160,8 @@ foreach job $ret {
     if { $err > 0 } {
         continue
     }
+
+    } #temp
 
     puts "Running $scheduler(Script)"
     set timenow [clock format [clock seconds] -format {%Y%m%d%H%M%S}]
