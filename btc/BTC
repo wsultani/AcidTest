@@ -25,7 +25,7 @@ proc main { margs } {
         set sql_cmd "SELECT Testbed FROM btc_testbeds GROUP BY Testbed"
         if { [catch {::mysql::sel $mysql $sql_cmd -list} ret] } {
             write_error "could not exec sql cmd : $sql_cmd - $ret"
-            exit
+            clean_exit
         }
         set tb_list $ret
     } else {
@@ -52,7 +52,7 @@ proc main { margs } {
                     }
                 } else {
                     write_error "Testbed $tb not found in $marray(-cfgfile)"
-                    exit
+                    clean_exit
                 }
             }
 
@@ -62,7 +62,7 @@ proc main { margs } {
 
                 if { [catch {::mysql::sel $mysql $sql_cmd -list} devlist] } {
                     write_error "could not exec sql cmd : $sql_cmd - $devlist"
-                    exit
+                    clean_exit
                 }
             }
         }
@@ -70,7 +70,7 @@ proc main { margs } {
         # if no devices were found then exit test.
         if { [llength $devlist] <= 0 } {
             write_error "No info found matching testbed $tb"
-            exit
+            clean_exit
         }
 
         write_info "[llength $devlist] devices found in testbed $tb"
@@ -79,7 +79,25 @@ proc main { margs } {
 
     if { $marray(-testbed) == "list" } {
         write_info "Print out available testbeds and exit"
-        exit
+        clean_exit
+    }
+
+    # checking lock file
+    set lockfile "/tmp/$marray(-testbed).lock"
+    if { [file exists $lockfile] } {
+        if ($::force) {
+            if { [catch {file delete -force "$lockfile"} ret] } { 
+                write_error "unable to delete lock file - $ret"
+            }
+        } else {
+            write_error "Testbed in use found lock file - $lockfile"
+            clean_exit
+        }
+    }
+    
+    if { [catch {open "$lockfile" w} ret] } { 
+        write_error "unable to create lock file - $ret"
+        clean_exit
     }
 
     set dev_types ""
@@ -122,7 +140,7 @@ proc main { margs } {
 
                     if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                         write_error "could not exec sql cmd : $sql_cmd - $ret"
-                        exit
+                        clean_exit
                     }
                 }
 
@@ -145,13 +163,15 @@ proc main { margs } {
                    set ret [rpower #auto $bv(RemotePower) $bv(RPLogin) $bv(RPPassword)]
                    if { $ret == "" } {
                        write_error [data_from $ret]
-                       exit
+                       clean_exit
                    }
                    set ::rpower_bv${DevNum} ::$ret
                }
            }
 
             adb {
+
+                set ::env(PATH) "$::env(PATH):/opt/android-sdk/tools:/opt/android-sdk/platform-tools"
 
                 if { [lsearch -exact $dev_types "adb"] < 0 } {
                     lappend dev_types adb
@@ -174,7 +194,7 @@ proc main { margs } {
 
                     if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                         write_error "could not exec sql cmd : $sql_cmd - $ret"
-                        exit
+                        clean_exit
                     }
                 }
 
@@ -207,7 +227,7 @@ proc main { margs } {
                    set ret [rpower #auto $adb(RemotePower) admin cosmo]
                    if { $ret == "" } {
                        write_error [data_from $ret]
-                       exit
+                       clean_exit
                    }
                    set ::rpower_adb${DevNum} ::$ret
                }
@@ -237,7 +257,7 @@ proc main { margs } {
 
                     if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                         write_error "could not exec sql cmd : $sql_cmd - $ret"
-                        exit
+                        clean_exit
                     }
                 }
 
@@ -258,7 +278,7 @@ proc main { margs } {
                    set ret [rpower #auto $pc(RemotePower) admin cosmo]
                    if { $ret == "" } {
                        write_error [data_from $ret]
-                       exit
+                       clean_exit
                    }
                    set ::rpower_pc${DevNum} ::$ret
                }
@@ -288,7 +308,7 @@ proc main { margs } {
 
                     if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                         write_error "could not exec sql cmd : $sql_cmd - $ret"
-                        exit
+                        clean_exit
                     }
                 }
 
@@ -310,7 +330,7 @@ proc main { margs } {
                    set ret [rpower #auto $sw(RemotePower) admin cosmo]
                    if { $ret == "" } {
                        write_error [data_from $ret]
-                       exit
+                       clean_exit
                    }
                    set ::rpower_sw${DevNum} ::$ret
                }
@@ -336,7 +356,7 @@ proc main { margs } {
 
                     if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                         write_error "could not exec sql cmd : $sql_cmd - $ret"
-                        exit
+                        clean_exit
                     }
                 }
 
@@ -498,7 +518,7 @@ proc main { margs } {
             set ret [$ldut bivio_updaterom 192.168.120.1 "$marray(-updaterom)" "$mode"]
             if { [problem_with $ret] } {
                 write_error "failed to updaterom to $marray(-updaterom) on $ldut - [data_from $ret]"
-                exit
+                clean_exit
             }
         }
 
@@ -510,7 +530,7 @@ proc main { margs } {
             set ret [$::adb adb_clean_install $marray(-build)]
             if { [problem_with $ret] } {
                 write_error "failed to load build $marray(-build) - [data_from $ret]"
-                exit
+                clean_exit
             }
         }
 
@@ -520,7 +540,7 @@ proc main { margs } {
             set ret [$ldut bivio_update_fpga 192.168.120.1 "$marray(-fpga)" "full"]
             if { [problem_with $ret] } {
                 write_error "failed to update the FPGA to $marray(-fpga) on $ldut - [data_from $ret]"
-                exit
+                clean_exit
             }
         }
 
@@ -530,7 +550,7 @@ proc main { margs } {
             set ret [install_nccs_build $ldut $marray(-nccsbuild)]
             if { [problem_with $ret] } {
                 write_error "failed to load NCCS build $marray(-nccsbuild) - [data_from $ret]"
-                exit
+                clean_exit
             }
         }
     }
@@ -660,7 +680,7 @@ proc main { margs } {
 
             if { [catch {::mysql::sel $mysql $sql_cmd -list} ret] } {
                 write_error "could not exec sql cmd : $sql_cmd - $ret"
-                exit
+                clean_exit
             }
 
             if { [llength $ret] <= 0 } {
@@ -678,7 +698,7 @@ proc main { margs } {
 
         if { [llength $marray(-testcase)] <= 0 } {
             write_error "no testcases to run"
-            exit
+            clean_exit
         }
     }
 
@@ -727,7 +747,7 @@ proc main { margs } {
     set marray(-testcase) $newlst
     if { [llength $marray(-testcase)] <= 0 } {
         write_error "no testcases to run"
-        exit
+        clean_exit
     }
 
     write_step "Can run [llength $marray(-testcase)] testcases"
@@ -741,7 +761,7 @@ proc main { margs } {
 
     if { [info exists marray(-ETA)] && $marray(-ETA) != "" } {
         write_info "BTC called with ETA arg. Exiting harness"
-        exit
+        clean_exit
     }
 
     if { [info exists marray(-comments)] } {
@@ -810,7 +830,7 @@ proc main { margs } {
 
             if { [catch {::mysql::sel $mysql $sql_cmd -flatlist} ret] } {
                 write_error "could not exec sql cmd : $sql_cmd - $ret"
-                exit
+                clean_exit
             }
             set tc_info(Title) [lindex $ret 0]
 
@@ -979,18 +999,18 @@ if { [lsearch -regexp $argv "-suite"] >= 0 && [lsearch -regexp $argv "-testcase"
 
 if { [lsearch -regexp $argv "-autoinstall"] >= 0 && [lsearch -regexp $argv "-build"] < 0 } {
      puts "-build is required if -autoinstall is selected"
-     exit
+     clean_exit
 }
 
 if { [lsearch -regexp $argv "-nccsinstall"] >= 0 && [lsearch -regexp $argv "-nccsbuild"] < 0 } {
      puts "-nccsbuild is required if -nccsinstall is selected"
-     exit
+     clean_exit
 }
 
 array set argarray ""
 set ret [check_usage argv BTC]
 if { [problem_with $ret] } {
-    exit
+    clean_exit
 }
 
 # arrange the args in an array for easy access.
@@ -1026,7 +1046,7 @@ if { [info exist argarray(-build)] } {
 
 #    if { ![regexp {(fcdist|zdist).\d+.\d+.\d+} $lbuild match] } {
 #        write_error "build format is incorrect \($lbuild\), should be \(fcdist.x.x.x or zdist.x.x.x\)"
-#        exit
+#        clean_exit
 #    }
 }
 
@@ -1036,7 +1056,7 @@ if { [info exists argarray(-cfgfile)] } {
         set ::cfg "file"
     } else {
         write_error "$argarray(-cfgfile) does not exist."
-        exit
+        clean_exit
     }
 }
 
@@ -1054,7 +1074,7 @@ set mysql_database btc_db
 if { [catch {::mysql::connect -h $mysql_server -user $mysql_user \
 		-password $mysql_password -db $mysql_database} ret] } {
     write_error "Unable to connect to $mysql_server - $ret"
-    exit
+    clean_exit
 }
 
 # set the local mysql object name. All calls to the mysql server will
@@ -1073,7 +1093,7 @@ if { $::logging == 1 } {
     set ret [mk_dir "$::logdir $argarray(-testbed) $timestamp"]
     if { [problem_with $ret] } {
         write_warning "[data_from $ret]"
-        exit
+        clean_exit
     }
     set ::logdir [data_from $ret]
     write_step "Logging results to : $::logdir"
@@ -1092,3 +1112,4 @@ write_info "Elapsed time : $main_time"
 #TODO - Cleanup, close all open connections and exit gracefully.
 # close the taredown log
 custom_close_file
+clean_exit
