@@ -22,6 +22,7 @@ itcl::class adb {
     constructor { devid ip_add user password ctype } {
 #        chain $ip_add $user $password $ctype
 #    } {
+
         write_info "Creating object for device id: $devid"
         eval configure -devid $devid 
 #        write_step "constructor chain to [info heritage] done"
@@ -77,13 +78,13 @@ itcl::body adb::adb_getprop {} {
     set adb(version) $sys(ro.build.version.release)
     set adb(id) $sys(ro.build.id)
 
-    puts [array get adb]
+    #puts [array get adb]
     return [list true ""]
 }
 
 itcl::body adb::adb_install { apk } {
 
-    set key "/var/www/html/automation/btc/tests/adb/debug.keystore"
+    set key "/var/www/html/AcidTest/btc/tests/adb/debug.keystore"
     
     write_info "Signing with $key"
     set ret [jarsigner $apk $key]
@@ -132,6 +133,12 @@ itcl::body adb::adb_uninstall { apk } {
 
 itcl::body adb::adb_runtest { apk {class} } {
 
+    write_info "Clearing logcat for device $devid.."
+    set cmd "adb -s $devid logcat -c"
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
     set ret [adb_getapk_info $apk "package: name"]
     if { [problem_with $ret] } {
         return $ret
@@ -141,6 +148,18 @@ itcl::body adb::adb_runtest { apk {class} } {
     set cmd "adb -s $devid shell am instrument -w -e class $class $pkg/android.test.InstrumentationTestRunner"
     if { [catch {eval exec $cmd} ret] } {
         return [list false $ret]
+    }
+
+    if {$::logging} {
+
+        upvar #1 tclog tlog
+        set lcat "[file rootname $tlog]-logcat.txt"
+
+        write_info "Saving logcat for device $devid to $::logdir"
+        set cmd "adb -s $devid logcat -d > [file join $::logdir $lcat]"
+        if { [catch {eval exec $cmd} lret] } {
+            write_warning "Unable to save logcat to $::logdir - $lret"
+        }
     }
 
     if { ![regexp {OK\s+\(1 test\)} $ret match] } {
@@ -186,12 +205,30 @@ itcl::body adb::adb_runmonkey { apk evcount margs } {
         write_info "Using default event count - $evcount"
     }
 
+    write_info "Clearing logcat for device $devid.."
+    set cmd "adb -s $devid logcat -c"
+    if { [catch {eval exec $cmd} ret] } {
+        return [list false $ret]
+    }
+
     set cmd "adb -s $devid shell monkey -p $pkg $evcount [array get ar]"
     write_info "Running monkey - $cmd"
 
     if { [catch {eval exec $cmd} ret] } {
         write_error "$ret"
         return [list false "$ret"]
+    }
+
+    if {$::logging} {
+
+        upvar #1 tclog tlog
+        set lcat "[file rootname $tlog]-logcat.txt"
+
+        write_info "Saving logcat for device $devid to $::logdir"
+        set cmd "adb -s $devid logcat -d > [file join $::logdir $lcat]"
+        if { [catch {eval exec $cmd} lret] } {
+            write_warning "Unable to save logcat to $::logdir - $lret"
+        }
     }
 
     if { [regexp {Monkey aborted due to error} $ret match] } {
@@ -210,8 +247,7 @@ itcl::body adb::adb_getapk_info { apk field } {
     write_info "Checking info for $apk"
 
     if { [catch {eval exec $cmd} ret] } {
-        write_error "$ret"
-        #return [list false "$ret"]
+        write_debug "Unable to exec $cmd $ret"
     }
 
     if { $field != "" } {
@@ -235,7 +271,7 @@ itcl::body adb::adb_launch_app { apk } {
     }
     set pkg [data_from $ret]
 
-    set ret [adb_getapk_info $apk "launchable activity name"]
+    set ret [adb_getapk_info $apk "launchable-activity: name"]
     if { [problem_with $ret] } {
         return [list false [data_from $ret]]
     }
