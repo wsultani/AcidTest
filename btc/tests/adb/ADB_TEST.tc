@@ -20,45 +20,44 @@ update_mysql_db ${p}
         write_error [data_from $ret]
         return [list false [data_from $ret]]
     }
-    
-    set app(name) PeelPhone-Debug_QA_6657.apk
-    set app(pkg) com.peel.app
-    set app(path) "/var/www/html/automation/btc/tests/adb/"
 
-    set test(name) "PeelHandsetTest.apk"
-    set test(pkg) "com.peel.android.test"
-    set test(path) "/var/www/html/automation/btc/tests/adb/"
-    set test(class) "com.peel.android.SettingsTests.TestSettings_CheckVersion"
+    set test(name) "test_app.apk"
+    set test(class) "com.peel.app.test.PA100_SetUP"
+
+    set test(path) "/var/www/html/AcidTest/btc/tests/adb/"
+    set test(fullapk) [file join $test(path) $test(name)] 
+
+    upvar marray marr
+    set app(fullapk) $marr(-build) 
+    set app(name) [file tail $app(fullapk)]
+    set app(path) [file dirname $app(fullapk)]
 
     #write_step "Get version info .."
-    #set ret [$::adb adb_getpkg_info [file join $app(path) $app(name)]]
+    #set ret [$::adb adb_getpkg_info $app(fullapk)]
     #if { [problem_with $ret data] } {
     #    write_error [data_from $ret]
     #    return [list false [data_from $ret]]
     #}
 
-    set ret [$::adb adb_launch_app [file join $app(path) $app(name)]]
+    set ret [$::adb adb_launch_app $app(fullapk)]
     if { [problem_with $ret data] } {
         write_error [data_from $ret]
         return [list false [data_from $ret]]
     }
 
-puts $ret
-exit
-
     write_step "Get system info .."
 
-    if (0) {
+    if (1) {
         foreach ap "app test" {
-            write_step "Uninstalling [set ${ap}(pkg)] .."
-            set ret [$::adb adb_uninstall [set ${ap}(pkg)]]
+            write_step "Uninstalling [set ${ap}(name)] .."
+            set ret [$::adb adb_uninstall [set ${ap}(fullapk)]]
             if { [problem_with $ret data] } {
                 write_error [data_from $ret]
                 return [list false [data_from $ret]]
             }
 
             write_step "Installing [set ${ap}(name)] .."
-            set ret [$::adb adb_install [file join [set ${ap}(path)] [set ${ap}(name)]]]
+            set ret [$::adb adb_install [set ${ap}(fullapk)]]
             if { [problem_with $ret data] } {
                 write_error [data_from $ret]
                 return [list false [data_from $ret]]
@@ -66,13 +65,14 @@ exit
         }
 
     write_step "Running Test $test(class)"
-    set ret [$::adb adb_runtest $test(pkg) $test(class)]
+    set ret [$::adb adb_runtest $test(fullapk) $test(class)]
     if { [problem_with $ret data] } {
         write_error [data_from $ret]
         return [list false [data_from $ret]]
     }
 }
 
+    write_step "Starting monkey test"
     set evcount 1000
     set margs(--throttle) 100
     set margs(--pct-majornav) 0
@@ -81,7 +81,7 @@ exit
     set margs(--pct-motion) 50
     set margs(--seed) 50
 
-    set ret [$::adb adb_runmonkey com.peel.android "$evcount" "margs"]
+    set ret [$::adb adb_runmonkey $app(fullapk) "$evcount" "margs"]
     if { [problem_with $ret] } {
         write_error "[data_from $ret]"
         return [list false "[data_from $ret]"]

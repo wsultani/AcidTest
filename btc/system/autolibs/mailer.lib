@@ -17,7 +17,7 @@ proc send_notification_email { {buildinfo ""} {email_list ""} } {
         append subject " - $binfo(Version)"
     }
 
-    if { [file exists $rdir] } {
+    if { [file exists $rdir] && $::logging == 1 } {
         set token [mime::initialize -canonical text/html -file $rdir]
     } else {
         set data "

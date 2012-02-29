@@ -94,7 +94,7 @@ itcl::body adb::adb_install { apk } {
     }
 
     write_info "Installing $apk"
-    set cmd "adb -s $devid install $apk"
+    set cmd "adb -s $devid install -r $apk"
     if { [catch {eval exec $cmd} ret] } {
         # for some reason the catch is triggered even if the cmd
         # is successful.
@@ -307,14 +307,34 @@ itcl::body adb::adb_clean_install { apk } {
 
 proc jarsigner { apk sig } {
 
+    set btype "release"
+
     set cmd "zip -d $apk \"META-INF\*\""
     if { [catch {eval exec $cmd} ret] } {
         write_warning "$ret"
         #return [list false $ret]
     }
 
-    set alias androiddebugkey
-    set cmd "jarsigner -keystore $sig -storepass android -keypass android $apk $alias"
+    switch $btype {
+        debug {
+            set spass "android"
+            set kpass "android"
+            set alias androiddebugkey
+        }
+        release {
+            set spass "p33l**"
+            set kpass "p33l**"
+            set alias peel
+        }
+        default {
+            set spass "p33l**"
+            set kpass "p33l**"
+            set alias peel
+        }
+    }
+
+    set cmd "jarsigner -keystore $sig -storepass $spass -keypass $kpass $apk $alias"
+
     if { [catch {eval exec $cmd} ret] } {
         return [list false $ret]
     }

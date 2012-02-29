@@ -74,7 +74,7 @@ proc html_header { fd {title ""} } {
     <title>$title</title>
     "
     append out "
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"http://[exec hostname]/automation/web/web2.0/BTC.css\"></link>
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"http://<\? echo \$_SERVER\[\"SERVER_ADDR\"\]; \?>/AcidTest/web/web2.0/BTC.css\"></link>
   </head>
   <body>
     "
@@ -109,7 +109,7 @@ proc custom_html_header { fd {title ""} } {
     append out "<title>$title</title>"
 
     append out "
-    <link rel=\"stylesheet\" type=\"text/css\" href=\"http://[exec hostname]/automation/web/web2.0/BTC.css\"></link>
+    <link rel=\"stylesheet\" type=\"text/css\" href=\"http://<\? echo \$_SERVER\[\"SERVER_ADDR\"\]; \?>/automation/web/web2.0/BTC.css\"></link>
     "
 
     append out {

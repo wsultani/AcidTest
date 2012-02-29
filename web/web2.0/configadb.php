@@ -7,8 +7,10 @@
   $table="btc_adb_inventory";
   $empty=0;
 
-  $fields = array(DeviceID, Name, OS, IPAddress, Login, Password, Connection, "Interface", "InterfaceIP", RemotePower, RPLogin, RPPassword);
-  $req = array(DeviceID, Name, OS, IPAddress, Login, Password, Connection, "Interface", "InterfaceIP");
+  $fields = array(DeviceID, Name);
+  $req = array(DeviceID, Name);
+  //$fields = array(DeviceID, Name, OS, IPAddress, Login, Password, Connection, "Interface", "InterfaceIP", RemotePower, RPLogin, RPPassword);
+  //$req = array(DeviceID, Name, OS, IPAddress, Login, Password, Connection, "Interface", "InterfaceIP");
 
   foreach ($_POST as $key => $value) {
     if ( !in_array($key, $req) ) {
@@ -22,15 +24,17 @@
     }
   }
 
-  // check to see if interface for the ipaddress is already registered.
-  $query = "SELECT * FROM $table WHERE IPAddress = \"" . $_POST['IPAddress'] . "\" AND Interface = \"" . $_POST['Interface'] . "\"";
-  mysql_query ($query);
-  $result = mysql_affected_rows();
-    if ( $result > 0 ) { 
-    $stat = fail;
-    $msg .= "Interface " . $_POST['Interface'] . " on " . $_POST['IPAddress'] . " is already Registered.<br>";
-    $empty ++;
-  } 
+  if (in_array("interface", $req)) {
+    // check to see if interface for the ipaddress is already registered.
+    $query = "SELECT * FROM $table WHERE IPAddress = \"" . $_POST['IPAddress'] . "\" AND Interface = \"" . $_POST['Interface'] . "\"";
+    mysql_query ($query);
+    $result = mysql_affected_rows();
+      if ( $result > 0 ) { 
+      $stat = fail;
+      $msg .= "Interface " . $_POST['Interface'] . " on " . $_POST['IPAddress'] . " is already Registered.<br>";
+      $empty ++;
+    } 
+  }
 
   if ( $empty == "0" && $_POST['Class'] != "" ) {
     $keys = join(", ",(array_keys($_POST)));
@@ -74,7 +78,7 @@
 <?
     foreach ($fields as $key => $name) {
 
-      $out = "<tr><td><b>$name</b></td><td><input name=$name width=100 value=$_POST[$name]>";
+      $out = "<tr><td><b>$name</b></td><td><input name=$name width=100 value=\"$_POST[$name]\">";
 
       if ( $name == "Connection" ) {
         $out = "<tr><td><b>$name</b></td>";

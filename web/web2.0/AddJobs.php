@@ -87,7 +87,7 @@ function write_to_file ($file,$stringData) {
         <div id="main">
         <ul id="secondary">
 
-<?
+<?php
   $L2 = array();
   foreach ($L2 as $key=>$val) {
 
@@ -105,7 +105,17 @@ function write_to_file ($file,$stringData) {
   <tr><td><br><br></td></tr>
 
 
-<?
+<?php
+  if ( $_POST['-testbed'] != "Select" ) {
+    $tbl = "btc_testbeds";
+    $query="SELECT DevClass FROM $tbl WHERE Testbed =\"" . $_POST['-testbed'] . "\"";
+    $result=mysql_query($query) or die(mysql_error());
+    while($row = mysql_fetch_array($result)){
+      //echo $row['DevClass'];
+      $dut = $row['DevClass'];
+    }
+  }
+
   if ( $_POST['RunTest'] == "Run" ) {
 
     if ( $_POST['qt'] == "on" ) {
@@ -131,7 +141,30 @@ function write_to_file ($file,$stringData) {
       }
     }
 
-    if ( $_POST['-testbed'] != "Select" ) {
+    $ok = 1;
+
+    if ( $_POST['-testbed'] == "Select" ) {
+      $msg = "Please select a Testbed";
+      $ok = 0; 
+    }
+
+    if ( $_POST['-testcase'] == "" ) {
+      if ( $msg != "" ) {
+        $msg .= "<br>";
+      }
+      $msg .= "Please select a Testcase";
+      $ok = 0; 
+    }
+
+    if ( $_POST['-build'] == "" ) {
+      if ( $msg != "" ) {
+        $msg .= "<br>";
+      }
+      $msg .= "Please select a Build";
+      $ok = 0;
+    }
+
+    if ( $ok ) {
 
       $cmd = "./BTC";
       foreach ($_POST as $key => $value) {
@@ -155,7 +188,6 @@ function write_to_file ($file,$stringData) {
         if ($key == "qt" || $key == "qt_ip" || $key == "qt_cip" || $key == "qt_port" || $key == "qt_login" || $key == "qt_pass") {
           continue;
         }
-
 
         // if value is an array
         if (is_array($value)) {
@@ -195,10 +227,7 @@ function write_to_file ($file,$stringData) {
         $msg = mysql_affected_rows() . " rows inserted into table " .  $table;
       }
     } else {
-      if ( $_POST['-testbed'] == "Select" ) {
         $stat = fail;
-        $msg = "Please select a Testbed";
-      }
     }
   }
 
@@ -208,6 +237,10 @@ function write_to_file ($file,$stringData) {
 
     //fork off and run the command
     exec('./scheduler.tcl &');
+
+    // if passed then redirect to job status page.
+    $redurl = str_replace("AddJobs", "JobStatus", $_SERVER["REQUEST_URI"]);
+    header( 'Location: '. $redurl ); 
   }
 
   if ( $msg != "" ) {
@@ -223,11 +256,11 @@ function write_to_file ($file,$stringData) {
     <table border=0 cellpadding=5 cellspacing=0 valign=top width=100%>
     <tr align=left>
     <td>
-    <select name="-testbed">
+    <select name="-testbed" onchange="this.form.submit();">
       <option value="Select">Select a Testbed</option>
 <?
   // generate the select options list
-  fetchGroup("Testbed","btc_testbeds","Testbed","","option");
+  fetchGroup("Testbed","btc_testbeds","Testbed",$_POST["-testbed"],"option");
 ?>
     </select>
     </td>
@@ -293,6 +326,22 @@ function write_to_file ($file,$stringData) {
     </tr>
     </table>
   </td>
+  </tr>
+
+  <tr><th align=left><h2>Enter a Build (Required) 
+    <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
+      <div class="tooltip">Enter the build string. The build string must contain the distro string.<br>
+        <br>Example : fcdist.5.0.5.10.
+      </div></a>
+    </div>
+  </h2></th></tr>
+
+  <tr>
+      <td valign=top>
+      <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
+        <tr><td><input type=text name=-build size=40 value="<?php echo $_POST["-build"]; ?>"></input></td></tr>
+      </table>
+      </td>
   </tr>
 
   <tr><td><br><br></td></tr>
@@ -419,11 +468,56 @@ function write_to_file ($file,$stringData) {
           </div>
 
         </th></tr>
-        <tr><td><input type=text name=-mail size=40 / ></td></tr>
+        <tr><td><input type=text name=-mail size=40 value="<?php echo $_POST["-mail"]; ?>"></input></td></tr>
       </table>
       </td>
       
       </tr>
+
+      <tr>
+
+      <td valign=top>
+      <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
+        <tr><th align=left>Enter Job Priority
+
+          <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
+            <div class="tooltip">Allows you to select the priority of the job.<br>
+              <br>The lower the number the higher the priority.<br>
+              <br>This field can be used to control the order of the jobs when entering multiple jobs.<br>
+              <br>Default is : 1
+            </div></a>
+          </div>
+
+        </th></tr>
+        <tr><td><input type=text name=Priority size=40 value=<?php echo $_POST["Priority"]; ?>></input></td></tr>
+      </table>
+      </td>
+
+      <td valign=top>
+      <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
+        <tr><th align=left>Add Comments
+
+          <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
+            <div class="tooltip">Its a good idea to add some specific comments about your test.<br>
+              <br>This will help you easily identify your test results in the results table.
+            </div></a>
+          </div>
+
+        </th></tr>
+        <tr><td><textarea name=-comments cols=40><?php echo $_POST["-comments"]; ?></textarea></td></tr>
+      </table>
+      </td>
+
+      </tr>
+
+<?php
+
+    // show only bivio related options
+    if ($dut == "bivio") {
+?>
+      <tr><th colspan=10><br><br>Bivio options</th>
+      </tr>
+
       <tr>
 
       <td valign=top>
@@ -441,6 +535,7 @@ function write_to_file ($file,$stringData) {
       </table>
       </td>
 
+<!--
       <td valign=top>
       <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
         <tr><th align=left>Enter a Build
@@ -455,6 +550,8 @@ function write_to_file ($file,$stringData) {
         <tr><td><input type=text name=-build size=40 / ></td></tr>
       </table>
       </td>
+
+-->
 
       <td valign=top>
       <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
@@ -526,23 +623,6 @@ function write_to_file ($file,$stringData) {
       </tr>
       <tr>
 
-      <td valign=top>
-      <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
-        <tr><th align=left>Enter Job Priority
-
-          <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
-            <div class="tooltip">Allows you to select the priority of the job.<br>
-              <br>The lower the number the higher the priority.<br>
-              <br>This field can be used to control the order of the jobs when entering multiple jobs.<br>
-              <br>Default is : 1
-            </div></a>
-          </div>
-
-        </th></tr>
-        <tr><td><input type=text name=Priority size=40 / ></td></tr>
-      </table>
-      </td>
-
 <!--
       <td valign=top>
       <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
@@ -563,16 +643,17 @@ function write_to_file ($file,$stringData) {
 
       <td valign=top>
       <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
-        <tr><th align=left>Add Comments
+        <tr><th align=left>Chassis Serial
 
           <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
-            <div class="tooltip">Its a good idea to add some specific comments about your test.<br>
-              <br>This will help you easily identify your test results in the results table.
+            <div class="tooltip">Enter a space seperated list of serial numbers<br>
+              <br>These serial numbers will be stored in the database as part of the test.<br>
+              <br>Example : 7APC-000437 7NPC-000459
             </div></a>
           </div>
 
         </th></tr>
-        <tr><td><textarea name=-comments cols=40></textarea></td></tr>
+        <tr><td><input type=text name=-serials size=40 / ></td></tr>
       </table>
       </td>
 
@@ -594,27 +675,32 @@ function write_to_file ($file,$stringData) {
       </td>
 
       </tr>
-      <tr>
 
-      <td valign=top>
-      <table border=0 cellpadding=5 cellspacing=0 valign=top align=left width=100%>
-        <tr><th align=left>Chassis Serial
+<?php
+    //end of bivio options
+    }
+?>
 
-          <div class="tt"><a href="#"><image src=info.png align=absmiddle border=0>
-            <div class="tooltip">Enter a space seperated list of serial numbers<br>
-              <br>These serial numbers will be stored in the database as part of the test.<br>
-              <br>Example : 7APC-000437 7NPC-000459
-            </div></a>
-          </div>
+<?php
 
-        </th></tr>
-        <tr><td><input type=text name=-serials size=40 / ></td></tr>
-      </table>
-      </td>
-
-      <td></td>
-
+    // show only adb related options
+    if ($dut == "adb") {
+?>
+      <tr><th colspan=10><br><br>ADB options</th>
       </tr>
+
+      <tr>
+      <td valign=top></td>
+      <td></td>
+      <td></td>
+   
+      </tr>
+
+<?php
+    //end of adb options
+    }
+?>
+
     </table>
   </td>
   </tr>
@@ -624,8 +710,7 @@ function write_to_file ($file,$stringData) {
   <tr><th>
     <table border=0 width=100% cellpadding=0>
     <tr>
-    <td width=50% align=center><input type="submit" value="Add Job" /></td>
-    <input type=hidden name=RunTest value=Run />
+    <td width=50% align=center><button type="submit" name=RunTest value=Run style="width:100px;">Add Job</button></td>
     <td align=center><b><? echo '<a href="'.$_SERVER['REQUEST_URI'].'">Reset</a>'; ?></b></td>
     </tr>
     </table>

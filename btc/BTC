@@ -214,6 +214,13 @@ proc main { margs } {
                     return [list false $ret]
                 }
 
+
+                # temp
+                set adb(IPAddress) 1.2.3.4
+                set adb(Login) test
+                set adb(Password) test
+                set adb(Connection) ssh
+
                 # create the bivio object
                 set ret [eval $adb(Class) $adb(Name) $adb(DeviceID) $adb(IPAddress) $adb(Login) $adb(Password) $adb(Connection)]
                 set ::adb$DevNum "::$ret"
